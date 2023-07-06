@@ -68,13 +68,13 @@ public class DefaultHttpTlsFactory implements HttpTlsFactory, HttpTlsExtendFacto
           "init sslContext failed " + e.getClass().getSimpleName() + ": " + e.getLocalizedMessage(),
           e);
     }
-    HostnameVerifier hostnameVerifier = this.initHostnameVerifier(tlsConfig);
+    HostnameVerifier hostnameVerifier = this.initHostnameVerifierInternal(tlsConfig);
     return new HttpTlsContext(sslContext, hostnameVerifier);
   }
 
   private SSLContext initSslContext(HttpTlsConfig tlsConfig) throws Exception {
-    KeyManagerFactory keyManagerFactory = this.initKeyManagerFactory(tlsConfig);
-    TrustManagerFactory trustManagerFactory = this.initTrustManagerFactory(tlsConfig);
+    KeyManagerFactory keyManagerFactory = this.initKeyManagerFactoryInternal(tlsConfig);
+    TrustManagerFactory trustManagerFactory = this.initTrustManagerFactoryInternal(tlsConfig);
 
     String protocol = tlsConfig.getProtocol();
     String actualProtocol = protocol != null ? protocol : "TLS";
@@ -88,8 +88,8 @@ public class DefaultHttpTlsFactory implements HttpTlsFactory, HttpTlsExtendFacto
   }
 
   @Nullable
-  @Override
-  public KeyManagerFactory initKeyManagerFactory(HttpTlsConfig tlsConfig) throws Exception {
+  private KeyManagerFactory initKeyManagerFactoryInternal(HttpTlsConfig tlsConfig)
+      throws Exception {
     @Nullable
     String actualKeyPassword = this.getActualKeyPassword(tlsConfig);
     KeyStore keyStore = this.loadKeyStore(tlsConfig, actualKeyPassword);
@@ -120,8 +120,8 @@ public class DefaultHttpTlsFactory implements HttpTlsFactory, HttpTlsExtendFacto
   }
 
   @Nullable
-  @Override
-  public TrustManagerFactory initTrustManagerFactory(HttpTlsConfig tlsConfig) throws Exception {
+  private TrustManagerFactory initTrustManagerFactoryInternal(HttpTlsConfig tlsConfig)
+      throws Exception {
     String type = tlsConfig.getTrustManagerType();
     String actualType = !Strings.isNullOrEmpty(type) ? type : "WELL_KNOWN_CA";
     switch (actualType) {
@@ -136,7 +136,6 @@ public class DefaultHttpTlsFactory implements HttpTlsFactory, HttpTlsExtendFacto
       default:
         throw new IllegalStateException("Unexpected value: " + type);
     }
-
   }
 
   private TrustManagerFactory getWellKnownCaTrustManagerFactory(HttpTlsConfig tlsConfig)
@@ -187,8 +186,7 @@ public class DefaultHttpTlsFactory implements HttpTlsFactory, HttpTlsExtendFacto
   }
 
   @Nullable
-  @Override
-  public ExtendHostnameVerifier initHostnameVerifier(HttpTlsConfig tlsConfig) {
+  private ExtendHostnameVerifier initHostnameVerifierInternal(HttpTlsConfig tlsConfig) {
     String type = tlsConfig.getHostnameVerifierType();
     String actualType = !Strings.isNullOrEmpty(type) ? type : "STRICT";
     switch (actualType) {
@@ -202,6 +200,27 @@ public class DefaultHttpTlsFactory implements HttpTlsFactory, HttpTlsExtendFacto
       default:
         throw new IllegalStateException("Unexpected value: " + type);
     }
+  }
+
+  @Nullable
+  @Override
+  public KeyManagerFactory initKeyManagerFactory(HttpTlsConfig tlsConfig) throws Exception {
+    Objects.requireNonNull(tlsConfig, "tlsConfig");
+    return this.initKeyManagerFactoryInternal(tlsConfig);
+  }
+
+  @Nullable
+  @Override
+  public TrustManagerFactory initTrustManagerFactory(HttpTlsConfig tlsConfig) throws Exception {
+    Objects.requireNonNull(tlsConfig, "tlsConfig");
+    return this.initTrustManagerFactoryInternal(tlsConfig);
+  }
+
+  @Nullable
+  @Override
+  public ExtendHostnameVerifier initHostnameVerifier(HttpTlsConfig tlsConfig) {
+    Objects.requireNonNull(tlsConfig, "tlsConfig");
+    return this.initHostnameVerifierInternal(tlsConfig);
   }
 
   @Override
