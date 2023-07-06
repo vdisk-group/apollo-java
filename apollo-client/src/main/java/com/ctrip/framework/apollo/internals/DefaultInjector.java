@@ -16,6 +16,7 @@
  */
 package com.ctrip.framework.apollo.internals;
 
+import com.ctrip.framework.apollo.core.http.HttpPingClient;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.spi.ApolloInjectorCustomizer;
 import com.ctrip.framework.apollo.spi.ConfigFactory;
@@ -30,7 +31,9 @@ import com.ctrip.framework.apollo.util.factory.DefaultPropertiesFactory;
 import com.ctrip.framework.apollo.util.factory.PropertiesFactory;
 import com.ctrip.framework.apollo.util.http.DefaultHttpClient;
 import com.ctrip.framework.apollo.util.http.HttpClient;
-
+import com.ctrip.framework.apollo.util.http.HttpClientV2;
+import com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig;
+import com.ctrip.framework.apollo.util.http.tls.HttpTlsContextHolder;
 import com.ctrip.framework.apollo.util.yaml.YamlParser;
 import com.ctrip.framework.foundation.internals.ServiceBootstrap;
 import com.google.inject.AbstractModule;
@@ -100,7 +103,11 @@ public class DefaultInjector implements Injector {
       bind(ConfigRegistry.class).to(DefaultConfigRegistry.class).in(Singleton.class);
       bind(ConfigFactory.class).to(DefaultConfigFactory.class).in(Singleton.class);
       bind(ConfigUtil.class).in(Singleton.class);
-      bind(HttpClient.class).to(DefaultHttpClient.class).in(Singleton.class);
+      bind(HttpTlsConfig.class).in(Singleton.class);
+      bind(HttpTlsContextHolder.class).in(Singleton.class);
+      bind(HttpClient.class).to(HttpClientV2.class).in(Singleton.class);
+      bind(HttpPingClient.class).to(HttpClientV2.class).in(Singleton.class);
+      bind(HttpClientV2.class).to(DefaultHttpClient.class).in(Singleton.class);
       bind(ConfigServiceLocator.class).in(Singleton.class);
       bind(RemoteConfigLongPollService.class).in(Singleton.class);
       bind(YamlParser.class).in(Singleton.class);

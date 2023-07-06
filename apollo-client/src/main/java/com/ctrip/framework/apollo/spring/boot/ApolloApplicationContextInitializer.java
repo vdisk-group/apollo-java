@@ -28,6 +28,7 @@ import com.ctrip.framework.apollo.spring.config.PropertySourcesConstants;
 import com.ctrip.framework.apollo.spring.util.PropertySourcesUtil;
 import com.ctrip.framework.apollo.spring.util.SpringInjector;
 import com.ctrip.framework.apollo.util.ConfigUtil;
+import com.ctrip.framework.apollo.util.http.tls.ApolloClientHttpTlsSystemConstants;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import java.util.List;
@@ -93,7 +94,23 @@ public class ApolloApplicationContextInitializer implements
       ApolloClientSystemConsts.APOLLO_CONFIG_SERVICE,
       ApolloClientSystemConsts.APOLLO_PROPERTY_ORDER_ENABLE,
       ApolloClientSystemConsts.APOLLO_PROPERTY_NAMES_CACHE_ENABLE,
-      ApolloClientSystemConsts.APOLLO_OVERRIDE_SYSTEM_PROPERTIES};
+      ApolloClientSystemConsts.APOLLO_OVERRIDE_SYSTEM_PROPERTIES,
+      // http tls
+      ApolloClientHttpTlsSystemConstants.ENABLED_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.PROTOCOL_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.KEY_STORE_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.KEY_PASSWORD_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.KEY_STORE_PASSWORD_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.KEY_STORE_TYPE_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.KEY_STORE_PROVIDER_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.TRUST_STORE_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.TRUST_STORE_PASSWORD_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.TRUST_STORE_TYPE_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.TRUST_STORE_PROVIDER_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.TRUST_MANAGER_TYPE_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.HOSTNAME_VERIFIER_TYPE_SYSTEM_PROPERTIES,
+      ApolloClientHttpTlsSystemConstants.HOSTNAME_VERIFIER_EXACT_SERVER_NAMES_SYSTEM_PROPERTIES,
+  };
 
   private final ConfigPropertySourceFactory configPropertySourceFactory = SpringInjector
       .getInstance(ConfigPropertySourceFactory.class);

@@ -88,6 +88,134 @@
       "type": "java.lang.String",
       "sourceType": "com.ctrip.framework.foundation.spi.provider.ApplicationProvider",
       "description": "apollo client app id. if it's empty apollo will only load public namespace configurations!."
+    },
+    {
+      "name": "apollo.http.tls.enabled",
+      "type": "java.lang.Boolean",
+      "description": "TLS enabled.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig",
+      "defaultValue": false
+    },
+    {
+      "name": "apollo.http.tls.protocol",
+      "type": "java.lang.String",
+      "description": "TLS protocol.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    },
+    {
+      "name": "apollo.http.tls.key-store",
+      "type": "java.lang.String",
+      "description": "mTLS client key store location.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    },
+    {
+      "name": "apollo.http.tls.key-password",
+      "type": "java.lang.String",
+      "description": "mTLS client key password.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    },
+    {
+      "name": "apollo.http.tls.key-store-password",
+      "type": "java.lang.String",
+      "description": "mTLS client key store password.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    },
+    {
+      "name": "apollo.http.tls.key-store-type",
+      "type": "java.lang.String",
+      "description": "mTLS client key store type.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    },
+    {
+      "name": "apollo.http.tls.key-store-provider",
+      "type": "java.lang.String",
+      "description": "mTLS client key store provider.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    },
+    {
+      "name": "apollo.http.tls.trust-store",
+      "type": "java.lang.String",
+      "description": "TLS trust store location.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    },
+    {
+      "name": "apollo.http.tls.trust-store-password",
+      "type": "java.lang.String",
+      "description": "TLS trust store password.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    },
+    {
+      "name": "apollo.http.tls.trust-store-type",
+      "type": "java.lang.String",
+      "description": "TLS trust store type.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    },
+    {
+      "name": "apollo.http.tls.trust-store-provider",
+      "type": "java.lang.String",
+      "description": "TLS trust store provider.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    },
+    {
+      "name": "apollo.http.tls.trust-manager-type",
+      "type": "java.lang.String",
+      "description": "TLS trust manager type.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    },
+    {
+      "name": "apollo.http.tls.hostname-verifier-type",
+      "type": "java.lang.String",
+      "description": "TLS hostname verifier type.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    },
+    {
+      "name": "apollo.http.tls.hostname-verifier-exact-server-names",
+      "type": "java.util.List<java.lang.String>",
+      "description": "TLS hostname verifier exact server names.",
+      "sourceType": "com.ctrip.framework.apollo.util.http.tls.HttpTlsConfig"
+    }
+  ],
+  "hints": [
+    {
+      "name": "apollo.http.tls.trust-manager-type",
+      "values": [
+        {
+          "value": "WELL_KNOWN_CA"
+        },
+        {
+          "value": "SELF_SIGNED_CA"
+        },
+        {
+          "value": "SELF_SIGNED_CERT"
+        },
+        {
+          "value": "IN_SECURE"
+        }
+      ],
+      "providers": [
+        {
+          "name": "any"
+        }
+      ]
+    },
+    {
+      "name": "apollo.http.tls.hostname-verifier-type",
+      "values": [
+        {
+          "value": "STRICT"
+        },
+        {
+          "value": "EXACT_SERVER_NAME"
+        },
+        {
+          "value": "NOOP"
+        }
+      ],
+      "providers": [
+        {
+          "name": "any"
+        }
+      ]
     }
   ]
 }

@@ -17,9 +17,12 @@
 package com.ctrip.framework.apollo.util.http;
 
 import com.ctrip.framework.apollo.build.ApolloInjector;
+import com.ctrip.framework.apollo.core.http.DefaultHttpPingClient;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
 import com.ctrip.framework.apollo.util.ConfigUtil;
+import com.ctrip.framework.apollo.util.http.tls.HttpTlsContext;
+import com.ctrip.framework.apollo.util.http.tls.HttpTlsContextHolder;
 import com.google.common.base.Function;
 import com.google.common.io.CharStreams;
 import com.google.gson.Gson;
@@ -31,19 +34,36 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Objects;
+import javax.annotation.Nullable;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
-public class DefaultHttpClient implements HttpClient {
-  private ConfigUtil m_configUtil;
+public class DefaultHttpClient implements HttpClientV2 {
+
+  private static final Logger log = LoggerFactory.getLogger(DefaultHttpClient.class);
+
   private static final Gson GSON = new Gson();
+
+  private ConfigUtil m_configUtil;
+
+  @Nullable
+  private final HttpTlsContext httpTlsContext;
 
   /**
    * Constructor.
    */
   public DefaultHttpClient() {
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
+    HttpTlsContextHolder httpTlsContextHolder = ApolloInjector.getInstance(
+        HttpTlsContextHolder.class);
+    this.httpTlsContext = httpTlsContextHolder.getHttpTlsContext();
   }
 
   /**
@@ -87,13 +107,13 @@ public class DefaultHttpClient implements HttpClient {
   }
 
   private <T> HttpResponse<T> doGetWithSerializeFunction(HttpRequest httpRequest,
-                                                         Function<String, T> serializeFunction) {
+      Function<String, T> serializeFunction) {
     InputStreamReader isr = null;
     InputStreamReader esr = null;
     int statusCode;
     try {
       HttpURLConnection conn = (HttpURLConnection) new URL(httpRequest.getUrl()).openConnection();
-
+      this.setupTls(conn, this.httpTlsContext);
       conn.setRequestMethod("GET");
 
       Map<String, String> headers = httpRequest.getHeaders();
@@ -182,4 +202,51 @@ public class DefaultHttpClient implements HttpClient {
         String.format("Get operation failed for %s", httpRequest.getUrl()));
   }
 
+  /**
+   * setup tls for the http connection
+   */
+  private void setupTls(HttpURLConnection conn, @Nullable HttpTlsContext httpTlsContext) {
+    Objects.requireNonNull(conn, "HttpURLConnection should not be null");
+    if (conn instanceof HttpsURLConnection) {
+      HttpsURLConnection httpsConn = (HttpsURLConnection) conn;
+      if (httpTlsContext != null) {
+        SSLContext sslContext = httpTlsContext.getSslContext();
+        if (sslContext != null) {
+          httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
+        }
+        HostnameVerifier hostnameVerifier = httpTlsContext.getHostnameVerifier();
+        if (hostnameVerifier != null) {
+          httpsConn.setHostnameVerifier(hostnameVerifier);
+        }
+      }
+    }
+  }
+
+  @Override
+  public boolean pingUrl(String url) {
+    try {
+      URL urlObj = new URL(url);
+      HttpURLConnection connection = (HttpURLConnection) urlObj.openConnection();
+      this.setupTls(connection, this.httpTlsContext);
+      connection.setRequestMethod("GET");
+      connection.setUseCaches(false);
+
+      int connectTimeout = this.m_configUtil.getConnectTimeout();
+      int readTimeout = this.m_configUtil.getReadTimeout();
+      connection.setConnectTimeout(connectTimeout);
+      connection.setReadTimeout(readTimeout);
+
+      connection.connect();
+
+      int statusCode = connection.getResponseCode();
+      DefaultHttpPingClient.cleanUpConnection(connection);
+      return (200 <= statusCode && statusCode <= 399);
+    } catch (Throwable e) {
+      if (log.isDebugEnabled()) {
+        log.debug("http ping failed [url:{}][err:{}]", url,
+            e.getClass().getSimpleName() + ": " + e.getLocalizedMessage(), e);
+      }
+    }
+    return false;
+  }
 }

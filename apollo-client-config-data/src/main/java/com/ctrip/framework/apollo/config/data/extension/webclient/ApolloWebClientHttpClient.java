@@ -18,13 +18,15 @@ package com.ctrip.framework.apollo.config.data.extension.webclient;
 
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
-import com.ctrip.framework.apollo.util.http.HttpClient;
+import com.ctrip.framework.apollo.util.http.HttpClientV2;
 import com.ctrip.framework.apollo.util.http.HttpRequest;
 import com.ctrip.framework.apollo.util.http.HttpResponse;
 import com.google.gson.Gson;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -33,7 +35,9 @@ import reactor.core.publisher.Mono;
 /**
  * @author vdisk <vdisk@foxmail.com>
  */
-public class ApolloWebClientHttpClient implements HttpClient {
+public class ApolloWebClientHttpClient implements HttpClientV2 {
+
+  private static final Logger log = LoggerFactory.getLogger(ApolloWebClientHttpClient.class);
 
   private final WebClient webClient;
 
@@ -64,22 +68,52 @@ public class ApolloWebClientHttpClient implements HttpClient {
       }
     }
     return requestHeadersSpec.exchangeToMono(clientResponse -> {
-      if (HttpStatus.OK.equals(clientResponse.statusCode())) {
-        return clientResponse.bodyToMono(String.class)
-            .map(body -> new HttpResponse<T>(HttpStatus.OK.value(),
-                gson.fromJson(body, responseType)));
-      }
-      if (HttpStatus.NOT_MODIFIED.equals(clientResponse.statusCode())) {
-        return Mono.just(new HttpResponse<T>(HttpStatus.NOT_MODIFIED.value(), null));
-      }
-      return Mono.error(new ApolloConfigStatusCodeException(clientResponse.rawStatusCode(),
-          String.format("Get operation failed for %s", httpRequest.getUrl())));
-    }).block();
+          if (HttpStatus.OK.equals(clientResponse.statusCode())) {
+            return clientResponse.bodyToMono(String.class)
+                .map(body -> new HttpResponse<T>(HttpStatus.OK.value(),
+                    gson.fromJson(body, responseType)));
+          }
+          if (HttpStatus.NOT_MODIFIED.equals(clientResponse.statusCode())) {
+            return Mono.just(new HttpResponse<T>(HttpStatus.NOT_MODIFIED.value(), null));
+          }
+          return Mono.error(new ApolloConfigStatusCodeException(clientResponse.rawStatusCode(),
+              String.format("Get operation failed for %s", httpRequest.getUrl())));
+        })
+        .onErrorMap(ex -> {
+          if (ex instanceof ApolloConfigException) {
+            return ex;
+          }
+          return new ApolloConfigException("Could not complete get operation", ex);
+        })
+        .block();
   }
 
   @Override
   public <T> HttpResponse<T> doGet(HttpRequest httpRequest, Type responseType)
       throws ApolloConfigException {
     return this.doGetInternal(httpRequest, responseType);
+  }
+
+  @Override
+  public boolean pingUrl(String url) {
+    try {
+      Boolean result = this.doPingInternal(url);
+      return result != null && result;
+    } catch (Throwable e) {
+      if (log.isDebugEnabled()) {
+        log.debug("http ping failed [url:{}][err:{}]", url,
+            e.getClass().getSimpleName() + ": " + e.getLocalizedMessage(), e);
+      }
+    }
+    return false;
+  }
+
+  private Boolean doPingInternal(String url) {
+    WebClient.RequestHeadersSpec<?> requestHeadersSpec = this.webClient.get()
+        .uri(URI.create(url));
+    return requestHeadersSpec.exchangeToMono(clientResponse -> {
+      int statusCode = clientResponse.statusCode().value();
+      return Mono.just(200 <= statusCode && statusCode <= 399);
+    }).block();
   }
 }

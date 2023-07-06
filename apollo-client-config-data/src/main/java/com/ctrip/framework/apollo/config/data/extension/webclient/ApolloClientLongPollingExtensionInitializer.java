@@ -19,9 +19,15 @@ package com.ctrip.framework.apollo.config.data.extension.webclient;
 import com.ctrip.framework.apollo.config.data.extension.initialize.ApolloClientExtensionInitializer;
 import com.ctrip.framework.apollo.config.data.extension.properties.ApolloClientProperties;
 import com.ctrip.framework.apollo.config.data.extension.webclient.customizer.spi.ApolloClientWebClientCustomizerFactory;
+import com.ctrip.framework.apollo.config.data.extension.webclient.customizer.spi.ApolloClientWebClientCustomizerFactoryV2;
 import com.ctrip.framework.apollo.config.data.injector.ApolloConfigDataInjectorCustomizer;
+import com.ctrip.framework.apollo.core.http.HttpPingClient;
+import com.ctrip.framework.apollo.core.spi.Ordered;
 import com.ctrip.framework.apollo.util.http.HttpClient;
+import com.ctrip.framework.apollo.util.http.HttpClientV2;
 import com.ctrip.framework.foundation.internals.ServiceBootstrap;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.commons.logging.Log;
 import org.springframework.boot.ConfigurableBootstrapContext;
@@ -38,12 +44,15 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class ApolloClientLongPollingExtensionInitializer implements
     ApolloClientExtensionInitializer {
 
+  private final DeferredLogFactory logFactory;
+
   private final Log log;
 
   private final ConfigurableBootstrapContext bootstrapContext;
 
   public ApolloClientLongPollingExtensionInitializer(DeferredLogFactory logFactory,
       ConfigurableBootstrapContext bootstrapContext) {
+    this.logFactory = logFactory;
     this.log = logFactory.getLog(ApolloClientLongPollingExtensionInitializer.class);
     this.bootstrapContext = bootstrapContext;
   }
@@ -52,19 +61,30 @@ public class ApolloClientLongPollingExtensionInitializer implements
   public void initialize(ApolloClientProperties apolloClientProperties, Binder binder,
       BindHandler bindHandler) {
     WebClient.Builder webClientBuilder = WebClient.builder();
-    List<ApolloClientWebClientCustomizerFactory> factories = ServiceBootstrap
+    @SuppressWarnings("deprecation")
+    List<ApolloClientWebClientCustomizerFactory> v1factories = ServiceBootstrap
         .loadAllOrdered(ApolloClientWebClientCustomizerFactory.class);
-    if (!CollectionUtils.isEmpty(factories)) {
-      for (ApolloClientWebClientCustomizerFactory factory : factories) {
+    List<ApolloClientWebClientCustomizerFactoryV2> v2factories = ServiceBootstrap
+        .loadAllOrdered(ApolloClientWebClientCustomizerFactoryV2.class);
+    List<ApolloClientWebClientCustomizerFactoryV2> allFactories = new ArrayList<>(
+        v1factories.size() + v2factories.size());
+    allFactories.addAll(v1factories);
+    allFactories.addAll(v2factories);
+    allFactories.sort(Comparator.comparingInt(Ordered::getOrder));
+    if (!CollectionUtils.isEmpty(allFactories)) {
+      WebClientCustomizerArgs args = new WebClientCustomizerArgs(apolloClientProperties, binder,
+          bindHandler, this.logFactory, this.log, this.bootstrapContext);
+      for (ApolloClientWebClientCustomizerFactoryV2 factory : allFactories) {
         WebClientCustomizer webClientCustomizer = factory
-            .createWebClientCustomizer(apolloClientProperties, binder, bindHandler, this.log,
-                this.bootstrapContext);
+            .createWebClientCustomizer(args);
         if (webClientCustomizer != null) {
           webClientCustomizer.customize(webClientBuilder);
         }
       }
     }
-    HttpClient httpClient = new ApolloWebClientHttpClient(webClientBuilder.build());
+    ApolloWebClientHttpClient httpClient = new ApolloWebClientHttpClient(webClientBuilder.build());
     ApolloConfigDataInjectorCustomizer.registerIfAbsent(HttpClient.class, () -> httpClient);
+    ApolloConfigDataInjectorCustomizer.registerIfAbsent(HttpPingClient.class, () -> httpClient);
+    ApolloConfigDataInjectorCustomizer.registerIfAbsent(HttpClientV2.class, () -> httpClient);
   }
 }

@@ -17,6 +17,8 @@
 package com.ctrip.framework.apollo.config.data.extension.properties;
 
 import com.ctrip.framework.apollo.config.data.extension.enums.ApolloClientMessagingType;
+import java.util.StringJoiner;
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
 /**
  * @author vdisk <vdisk@foxmail.com>
@@ -32,6 +34,12 @@ public class ApolloClientExtensionProperties {
    * apollo client listening type
    */
   private ApolloClientMessagingType messagingType = ApolloClientMessagingType.LONG_POLLING;
+
+  /**
+   * enable apollo client webclient tls extension
+   */
+  @NestedConfigurationProperty
+  private final ApolloClientExtensionTlsProperties tls = new ApolloClientExtensionTlsProperties();
 
   public Boolean getEnabled() {
     return enabled;
@@ -50,11 +58,18 @@ public class ApolloClientExtensionProperties {
     this.messagingType = messagingType;
   }
 
+  public ApolloClientExtensionTlsProperties getTls() {
+    return this.tls;
+  }
+
   @Override
   public String toString() {
-    return "ApolloClientExtensionProperties{" +
-        "enabled=" + enabled +
-        ", messagingType=" + messagingType +
-        '}';
+    return new StringJoiner(", ",
+        ApolloClientExtensionProperties.class.getSimpleName() + "[", "]")
+        // fields
+        .add("enabled=" + this.enabled)
+        .add("messagingType=" + this.messagingType)
+        .add("tls=" + this.tls)
+        .toString();
   }
 }
