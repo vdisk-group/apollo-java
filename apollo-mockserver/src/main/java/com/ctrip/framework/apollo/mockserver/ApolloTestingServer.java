@@ -97,8 +97,12 @@ public class ApolloTestingServer implements AutoCloseable {
         server.setDispatcher(dispatcher);
         server.start();
 
-        mockConfigServiceUrl("http://localhost:" + server.getPort());
+        mockConfigServiceUrl(this.getConfigServiceUrl());
         started = true;
+    }
+
+    public String getConfigServiceUrl() {
+        return "http://localhost:" + server.getPort();
     }
 
     public void close() {

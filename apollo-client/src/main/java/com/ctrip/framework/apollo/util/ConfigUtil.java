@@ -59,6 +59,7 @@ public class ConfigUtil {
   private boolean propertyNamesCacheEnabled = false;
   private boolean propertyFileCacheEnabled = true;
   private boolean overrideSystemProperties = true;
+  private boolean transportGrpcEnabled = false;
 
   public ConfigUtil() {
     warnLogRateLimiter = RateLimiter.create(0.017); // 1 warning log output per minute
@@ -74,6 +75,7 @@ public class ConfigUtil {
     initPropertyNamesCacheEnabled();
     initPropertyFileCacheEnabled();
     initOverrideSystemProperties();
+    initTransportGrpcEnabled();
   }
 
   /**
@@ -422,6 +424,10 @@ public class ConfigUtil {
     return overrideSystemProperties;
   }
 
+  public boolean isTransportGrpcEnabled() {
+    return this.transportGrpcEnabled;
+  }
+
   private void initPropertyNamesCacheEnabled() {
     propertyNamesCacheEnabled = getPropertyBoolean(ApolloClientSystemConsts.APOLLO_PROPERTY_NAMES_CACHE_ENABLE,
             ApolloClientSystemConsts.APOLLO_PROPERTY_NAMES_CACHE_ENABLE_ENVIRONMENT_VARIABLES,
@@ -438,6 +444,13 @@ public class ConfigUtil {
     overrideSystemProperties = getPropertyBoolean(ApolloClientSystemConsts.APOLLO_OVERRIDE_SYSTEM_PROPERTIES,
             ApolloClientSystemConsts.APOLLO_OVERRIDE_SYSTEM_PROPERTIES,
             overrideSystemProperties);
+  }
+
+  private void initTransportGrpcEnabled() {
+    this.transportGrpcEnabled = this.getPropertyBoolean(
+        ApolloClientSystemConsts.APOLLO_TRANSPORT_GRPC_ENABLED,
+        ApolloClientSystemConsts.APOLLO_TRANSPORT_GRPC_ENABLED_ENVIRONMENT_VARIABLES,
+        this.transportGrpcEnabled);
   }
 
   private boolean getPropertyBoolean(String propertyName, String envName, boolean defaultVal) {

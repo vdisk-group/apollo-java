@@ -26,6 +26,7 @@ import com.ctrip.framework.apollo.core.schedule.ExponentialSchedulePolicy;
 import com.ctrip.framework.apollo.core.schedule.SchedulePolicy;
 import com.ctrip.framework.apollo.core.signature.Signature;
 import com.ctrip.framework.apollo.core.utils.ApolloThreadFactory;
+import com.ctrip.framework.apollo.core.utils.CollectionUtil;
 import com.ctrip.framework.apollo.core.utils.DeferredLoggerFactory;
 import com.ctrip.framework.apollo.core.utils.StringUtils;
 import com.ctrip.framework.apollo.enums.ConfigSourceType;
@@ -33,11 +34,18 @@ import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
 import com.ctrip.framework.apollo.tracer.Tracer;
 import com.ctrip.framework.apollo.tracer.spi.Transaction;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportConfigClient;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportConfigClientManager;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportEndpoint;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportGetConfigRequest;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportGetConfigResponse;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportGetConfigResult;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportGetConfigStatus;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportNotificationMessages;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.apollo.util.ExceptionUtil;
-import com.ctrip.framework.apollo.util.http.HttpRequest;
-import com.ctrip.framework.apollo.util.http.HttpResponse;
 import com.ctrip.framework.apollo.util.http.HttpClient;
+import com.ctrip.framework.apollo.util.http.HttpRequest;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -47,8 +55,10 @@ import com.google.common.net.UrlEscapers;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.gson.Gson;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -70,6 +80,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
   private final ConfigServiceLocator m_serviceLocator;
   private final HttpClient m_httpClient;
   private final ConfigUtil m_configUtil;
+  private final ApolloTransportConfigClientManager clientManager;
   private final RemoteConfigLongPollService remoteConfigLongPollService;
   private volatile AtomicReference<ApolloConfig> m_configCache;
   private final String m_namespace;
@@ -95,6 +106,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
     m_namespace = namespace;
     m_configCache = new AtomicReference<>();
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
+    this.clientManager = ApolloInjector.getInstance(ApolloTransportConfigClientManager.class);
     m_httpClient = ApolloInjector.getInstance(HttpClient.class);
     m_serviceLocator = ApolloInjector.getInstance(ConfigServiceLocator.class);
     remoteConfigLongPollService = ApolloInjector.getInstance(RemoteConfigLongPollService.class);
@@ -222,31 +234,59 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
         url = assembleQueryConfigUrl(configService.getHomepageUrl(), appId, cluster, m_namespace,
                 dataCenter, m_remoteMessages.get(), m_configCache.get());
 
+        ApolloNotificationMessages remoteMessages = m_remoteMessages.get();
+        Map<String, Long> details = remoteMessages == null ? null : remoteMessages.getDetails();
+        ApolloTransportNotificationMessages messages =
+            CollectionUtil.isEmpty(details) ? null : ApolloTransportNotificationMessages.builder()
+                .details(new LinkedHashMap<>(details))
+                .build();
+
+        ApolloConfig previousConfig = this.m_configCache.get();
+        String localIp = this.m_configUtil.getLocalIp();
+        String label = this.m_configUtil.getApolloLabel();
+        ApolloTransportGetConfigRequest request = ApolloTransportGetConfigRequest.builder()
+            .appId(appId)
+            .cluster(cluster)
+            .namespace(this.m_namespace)
+            .releaseKey(previousConfig == null ? null : previousConfig.getReleaseKey())
+            .dataCenter(dataCenter)
+            .clientIp(Strings.isNullOrEmpty(localIp) ? null : localIp)
+            .label(Strings.isNullOrEmpty(label) ? null : label)
+            .messages(messages)
+            .build();
         logger.debug("Loading config from {}", url);
 
-        HttpRequest request = new HttpRequest(url);
+        HttpRequest httpRequest = new HttpRequest(url);
         if (!StringUtils.isBlank(secret)) {
           Map<String, String> headers = Signature.buildHttpHeaders(url, appId, secret);
-          request.setHeaders(headers);
+          httpRequest.setHeaders(headers);
         }
 
         Transaction transaction = Tracer.newTransaction("Apollo.ConfigService", "queryConfig");
         transaction.addData("Url", url);
         try {
 
-          HttpResponse<ApolloConfig> response = m_httpClient.doGet(request, ApolloConfig.class);
+          ApolloTransportEndpoint endpoint = ApolloTransportEndpoint.builder()
+              .address(configService.getHomepageUrl())
+              .build();
+          ApolloTransportConfigClient transportConfigClient = this.clientManager.getClient();
+          Objects.requireNonNull(transportConfigClient, "transportConfigClient must not be null");
+          ApolloTransportGetConfigResponse response = transportConfigClient.getConfig(
+              endpoint, request);
           m_configNeedForceRefresh.set(false);
           m_loadConfigFailSchedulePolicy.success();
 
-          transaction.addData("StatusCode", response.getStatusCode());
+          transaction.addData("StatusCode", response.getStatus().getCode());
           transaction.setStatus(Transaction.SUCCESS);
 
-          if (response.getStatusCode() == 304) {
-            logger.debug("Config server responds with 304 HTTP status code.");
+          if (ApolloTransportGetConfigStatus.NOT_MODIFIED.equals(response.getStatus())) {
+            logger.debug("Config server responds with NOT_MODIFIED status code.");
             return m_configCache.get();
           }
-
-          ApolloConfig result = response.getBody();
+          ApolloTransportGetConfigResult configResult = response.getConfig();
+          ApolloConfig result = new ApolloConfig(configResult.getAppId(), configResult.getCluster(),
+              configResult.getNamespaceName(), configResult.getReleaseKey());
+          result.setConfigurations(new LinkedHashMap<>(configResult.getConfigurations()));
 
           logger.debug("Loaded config for {}: {}", m_namespace, result);
 

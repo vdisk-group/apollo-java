@@ -26,16 +26,24 @@ import com.ctrip.framework.apollo.core.schedule.ExponentialSchedulePolicy;
 import com.ctrip.framework.apollo.core.schedule.SchedulePolicy;
 import com.ctrip.framework.apollo.core.signature.Signature;
 import com.ctrip.framework.apollo.core.utils.ApolloThreadFactory;
+import com.ctrip.framework.apollo.core.utils.CollectionUtil;
 import com.ctrip.framework.apollo.core.utils.StringUtils;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.spi.ConfigServiceLoadBalancerClient;
 import com.ctrip.framework.apollo.tracer.Tracer;
 import com.ctrip.framework.apollo.tracer.spi.Transaction;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportConfigClient;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportConfigClientManager;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportEndpoint;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportNotificationDefinition;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportNotificationResult;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportWatchNotificationsRequest;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportWatchNotificationsResponse;
+import com.ctrip.framework.apollo.transport.api.v1.config.ApolloTransportWatchNotificationsStatus;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.apollo.util.ExceptionUtil;
-import com.ctrip.framework.apollo.util.http.HttpRequest;
-import com.ctrip.framework.apollo.util.http.HttpResponse;
 import com.ctrip.framework.apollo.util.http.HttpClient;
+import com.ctrip.framework.apollo.util.http.HttpRequest;
 import com.ctrip.framework.foundation.internals.ServiceBootstrap;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -50,6 +58,7 @@ import com.google.common.reflect.TypeToken;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.gson.Gson;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
@@ -84,6 +93,7 @@ public class RemoteConfigLongPollService {
   private static final Gson GSON = new Gson();
   private ConfigUtil m_configUtil;
   private HttpClient m_httpClient;
+  private final ApolloTransportConfigClientManager clientManager;
   private ConfigServiceLocator m_serviceLocator;
   private final ConfigServiceLoadBalancerClient configServiceLoadBalancerClient = ServiceBootstrap.loadPrimary(
       ConfigServiceLoadBalancerClient.class);
@@ -105,6 +115,7 @@ public class RemoteConfigLongPollService {
     }.getType();
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
     m_httpClient = ApolloInjector.getInstance(HttpClient.class);
+    this.clientManager = ApolloInjector.getInstance(ApolloTransportConfigClientManager.class);
     m_serviceLocator = ApolloInjector.getInstance(ConfigServiceLocator.class);
     m_longPollRateLimiter = RateLimiter.create(m_configUtil.getLongPollQPS());
   }
@@ -179,33 +190,68 @@ public class RemoteConfigLongPollService {
 
         logger.debug("Long polling from {}", url);
 
-        HttpRequest request = new HttpRequest(url);
-        request.setReadTimeout(LONG_POLLING_READ_TIMEOUT);
+        HttpRequest httpRequest = new HttpRequest(url);
+        httpRequest.setReadTimeout(LONG_POLLING_READ_TIMEOUT);
         if (!StringUtils.isBlank(secret)) {
           Map<String, String> headers = Signature.buildHttpHeaders(url, appId, secret);
-          request.setHeaders(headers);
+          httpRequest.setHeaders(headers);
         }
 
         transaction.addData("Url", url);
+        List<ApolloTransportNotificationDefinition> notifications = new ArrayList<>(
+            this.m_notifications.size());
+        for (Map.Entry<String, Long> entry : this.m_notifications.entrySet()) {
+          ApolloTransportNotificationDefinition notification = ApolloTransportNotificationDefinition.builder()
+              .namespaceName(entry.getKey())
+              .notificationId(entry.getValue())
+              .build();
+          notifications.add(notification);
+        }
+        String localIp = this.m_configUtil.getLocalIp();
+        String label = this.m_configUtil.getApolloLabel();
+        ApolloTransportWatchNotificationsRequest request = ApolloTransportWatchNotificationsRequest.builder()
+            .appId(appId)
+            .cluster(cluster)
+            .notifications(notifications)
+            .dataCenter(dataCenter)
+            .clientIp(Strings.isNullOrEmpty(localIp) ? null : localIp)
+            .label(Strings.isNullOrEmpty(label) ? null : label)
+            .accessKeySecret(secret)
+            .build();
 
-        final HttpResponse<List<ApolloConfigNotification>> response =
-            m_httpClient.doGet(request, m_responseType);
+        ApolloTransportEndpoint endpoint = ApolloTransportEndpoint.builder()
+            .address(lastServiceDto.getHomepageUrl())
+            .build();
 
-        logger.debug("Long polling response: {}, url: {}", response.getStatusCode(), url);
-        if (response.getStatusCode() == 200 && response.getBody() != null) {
-          updateNotifications(response.getBody());
-          updateRemoteNotifications(response.getBody());
-          transaction.addData("Result", response.getBody().toString());
-          notify(lastServiceDto, response.getBody());
+        ApolloTransportConfigClient transportConfigClient = this.clientManager.getClient();
+        ApolloTransportWatchNotificationsResponse response = transportConfigClient.watchNotifications(
+            endpoint, request);
+
+        List<ApolloTransportNotificationResult> notificationResults = response.getNotifications();
+        logger.debug("Long polling response: {}, url: {}", response.getStatus(), url);
+        if (!CollectionUtil.isEmpty(notificationResults)) {
+          List<ApolloConfigNotification> notificationList = new ArrayList<>(
+              notificationResults.size());
+          for (ApolloTransportNotificationResult notificationResult : notificationResults) {
+            ApolloConfigNotification notification = new ApolloConfigNotification(
+                notificationResult.getNamespaceName(), notificationResult.getNotificationId());
+            notificationList.add(notification);
+          }
+
+          updateNotifications(notificationList);
+          updateRemoteNotifications(notificationList);
+          transaction.addData("Result", notificationList.toString());
+          notify(lastServiceDto, notificationList);
         }
 
         //try to load balance
-        if (response.getStatusCode() == 304 && ThreadLocalRandom.current().nextBoolean()) {
+        if (ApolloTransportWatchNotificationsStatus.NOT_MODIFIED.equals(
+            response.getStatus()) && ThreadLocalRandom.current().nextBoolean()) {
           lastServiceDto = null;
         }
 
         m_longPollFailSchedulePolicyInSecond.success();
-        transaction.addData("StatusCode", response.getStatusCode());
+        transaction.addData("StatusCode", response.getStatus().getCode());
         transaction.setStatus(Transaction.SUCCESS);
       } catch (Throwable ex) {
         lastServiceDto = null;

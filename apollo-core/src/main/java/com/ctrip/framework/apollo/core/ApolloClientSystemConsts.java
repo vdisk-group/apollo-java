@@ -161,4 +161,14 @@ public class ApolloClientSystemConsts {
    * enable apollo overrideSystemProperties
    */
   public static final String APOLLO_OVERRIDE_SYSTEM_PROPERTIES = "apollo.override-system-properties";
+
+  /**
+   * enable apollo transport grpc
+   */
+  public static final String APOLLO_TRANSPORT_GRPC_ENABLED = "apollo.transport.grpc.enabled";
+
+  /**
+   * enable apollo transport grpc environment variables
+   */
+  public static final String APOLLO_TRANSPORT_GRPC_ENABLED_ENVIRONMENT_VARIABLES = "APOLLO_TRANSPORT_GRPC_ENABLED";
 }

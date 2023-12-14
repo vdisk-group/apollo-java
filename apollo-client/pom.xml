@@ -35,6 +35,18 @@
 			<groupId>com.ctrip.framework.apollo</groupId>
 			<artifactId>apollo-core</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.ctrip.framework.apollo</groupId>
+			<artifactId>apollo-core-http</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.ctrip.framework.apollo</groupId>
+			<artifactId>apollo-transport-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.ctrip.framework.apollo</groupId>
+			<artifactId>apollo-transport-http</artifactId>
+		</dependency>
 		<!-- end of apollo -->
 		<!-- guice -->
 		<dependency>
