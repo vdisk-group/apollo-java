@@ -61,10 +61,15 @@ public class HttpConfigClient implements ConfigClient {
   private static final Type WATCH_NOTIFICATIONS_RESPONSE_TYPE = new TypeToken<List<ApolloConfigNotification>>() {
   }.getType();
 
-  private final HttpTransport httpTransport;
+  private final HttpTransport watchTransport;
 
-  public HttpConfigClient(HttpTransport httpTransport) {
-    this.httpTransport = Objects.requireNonNull(httpTransport, "httpTransport");
+  private final HttpTransport getTransport;
+
+  public HttpConfigClient(HttpTransport watchTransport, HttpTransport getTransport) {
+    Objects.requireNonNull(watchTransport, "watchTransport");
+    Objects.requireNonNull(getTransport, "getTransport");
+    this.watchTransport = watchTransport;
+    this.getTransport = getTransport;
   }
 
   @Override
@@ -72,7 +77,7 @@ public class HttpConfigClient implements ConfigClient {
       throws ConfigException {
     HttpRequest httpRequest = this.toWatchHttpRequest(endpoint, request);
     HttpResponse<List<ApolloConfigNotification>> httpResponse = this.doGet(
-        "Watch notifications",
+        "Watch notifications", this.watchTransport,
         httpRequest, WATCH_NOTIFICATIONS_RESPONSE_TYPE);
 
     return this.toWatchResponse(httpResponse);
@@ -134,10 +139,10 @@ public class HttpConfigClient implements ConfigClient {
   }
 
   private <T> HttpResponse<T> doGet(String scene,
-      HttpRequest httpRequest, Type responseType) {
+      HttpTransport transport, HttpRequest httpRequest, Type responseType) {
     HttpResponse<T> httpResponse;
     try {
-      httpResponse = this.httpTransport.doGet(
+      httpResponse = transport.doGet(
           httpRequest, responseType);
     } catch (HttpStatusCodeException e) {
       if (e.getStatusCode() == 404) {
@@ -217,7 +222,8 @@ public class HttpConfigClient implements ConfigClient {
 
     HttpRequest httpRequest = this.toGetConfigHttpRequest(endpoint, request);
 
-    HttpResponse<ApolloConfig> httpResponse = this.doGet("Get config", httpRequest,
+    HttpResponse<ApolloConfig> httpResponse = this.doGet("Get config", this.getTransport,
+        httpRequest,
         ApolloConfig.class);
 
     ApolloConfig apolloConfig = httpResponse.getBody();

@@ -34,11 +34,17 @@ public class HttpConfigClientFactory implements ConfigClientFactory {
 
   @Override
   public ConfigClient createClient() {
-    ConfigHttpTransportFactory transportFactory = ServiceBootstrap.loadPrimary(
-        ConfigHttpTransportFactory.class);
-    HttpTransport httpTransport = transportFactory.getHttpTransport();
-    Objects.requireNonNull(httpTransport, "httpTransport");
-    return new HttpConfigClient(httpTransport);
+    WatchNotificationHttpTransportFactory watchTransportFactory = ServiceBootstrap.loadPrimary(
+        WatchNotificationHttpTransportFactory.class);
+    HttpTransport watchTransport = watchTransportFactory.getHttpTransport();
+    Objects.requireNonNull(watchTransport, "watchTransport");
+
+    GetConfigHttpTransportFactory getConfigTransportFactory = ServiceBootstrap.loadPrimary(
+        GetConfigHttpTransportFactory.class);
+    HttpTransport getTransport = getConfigTransportFactory.getHttpTransport();
+    Objects.requireNonNull(getTransport, "getTransport");
+
+    return new HttpConfigClient(watchTransport, getTransport);
   }
 
   @Override

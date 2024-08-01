@@ -66,5 +66,13 @@
       <artifactId>slf4j-api</artifactId>
     </dependency>
     <!-- end of log -->
+
+    <!-- test -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- end of test -->
   </dependencies>
 </project>

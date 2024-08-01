@@ -14,17 +14,18 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.api.http.v1.meta;
+package com.ctrip.framework.apollo.client.api.http.v1.config;
 
 import com.ctrip.framework.apollo.client.api.http.v1.transport.DefaultHttpTransport;
 import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpTransport;
 import com.ctrip.framework.apollo.core.spi.Ordered;
 
-public class DefaultMetaHttpTransportFactory implements MetaHttpTransportFactory {
+public class DefaultWatchNotificationHttpTransportFactory implements
+    WatchNotificationHttpTransportFactory {
 
   public static final int ORDER = Ordered.LOWEST_PRECEDENCE - 100;
 
-  private static final DefaultHttpTransport HTTP_TRANSPORT = new DefaultHttpTransport(1000, 1000);
+  private static final DefaultHttpTransport HTTP_TRANSPORT = new DefaultHttpTransport(1000, 90_000);
 
   @Override
   public HttpTransport getHttpTransport() {

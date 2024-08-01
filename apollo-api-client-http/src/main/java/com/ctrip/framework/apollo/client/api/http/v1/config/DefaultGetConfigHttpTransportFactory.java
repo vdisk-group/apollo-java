@@ -16,9 +16,23 @@
  */
 package com.ctrip.framework.apollo.client.api.http.v1.config;
 
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpTransportFactory;
+import com.ctrip.framework.apollo.client.api.http.v1.transport.DefaultHttpTransport;
+import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpTransport;
 import com.ctrip.framework.apollo.core.spi.Ordered;
 
-public interface ConfigHttpTransportFactory extends HttpTransportFactory, Ordered {
+public class DefaultGetConfigHttpTransportFactory implements GetConfigHttpTransportFactory {
 
+  public static final int ORDER = Ordered.LOWEST_PRECEDENCE - 100;
+
+  private static final DefaultHttpTransport HTTP_TRANSPORT = new DefaultHttpTransport(1000, 5000);
+
+  @Override
+  public HttpTransport getHttpTransport() {
+    return HTTP_TRANSPORT;
+  }
+
+  @Override
+  public int getOrder() {
+    return ORDER;
+  }
 }
