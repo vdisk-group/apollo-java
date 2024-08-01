@@ -77,6 +77,8 @@
   </properties>
 
   <modules>
+    <module>apollo-api-client</module>
+    <module>apollo-api-client-http</module>
     <module>apollo-core</module>
     <module>apollo-client</module>
     <module>apollo-client-config-data</module>
@@ -87,6 +89,16 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>com.ctrip.framework.apollo</groupId>
+        <artifactId>apollo-api-client</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.ctrip.framework.apollo</groupId>
+        <artifactId>apollo-api-client-http</artifactId>
+        <version>${project.version}</version>
+      </dependency>
       <dependency>
         <groupId>com.ctrip.framework.apollo</groupId>
         <artifactId>apollo-core</artifactId>
