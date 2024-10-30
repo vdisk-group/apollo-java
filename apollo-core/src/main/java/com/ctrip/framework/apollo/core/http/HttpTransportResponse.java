@@ -14,14 +14,15 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.api.http.v1.transport;
+package com.ctrip.framework.apollo.core.http;
 
-public class HttpResponse<T> {
+public class HttpTransportResponse<T> {
 
   private final int statusCode;
+
   private final T body;
 
-  public HttpResponse(int statusCode, T body) {
+  public HttpTransportResponse(int statusCode, T body) {
     this.statusCode = statusCode;
     this.body = body;
   }

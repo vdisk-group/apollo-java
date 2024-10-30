@@ -16,39 +16,38 @@
  */
 package com.ctrip.framework.apollo.client.api.http.v1.config;
 
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpTransport;
 import com.ctrip.framework.apollo.client.api.v1.config.ConfigClient;
-import com.ctrip.framework.apollo.client.api.v1.config.ConfigClientFactory;
-import com.ctrip.framework.apollo.core.spi.Ordered;
+import com.ctrip.framework.apollo.core.http.HttpTransport;
+import com.ctrip.framework.apollo.core.http.HttpTransportFactory;
+import com.ctrip.framework.apollo.core.http.HttpTransportProperties;
 import com.ctrip.framework.foundation.internals.ServiceBootstrap;
 import java.util.Objects;
 
-public class HttpConfigClientFactory implements ConfigClientFactory {
+public class HttpConfigClientFactory {
 
-  public static final int ORDER = Ordered.LOWEST_PRECEDENCE - 200;
-
-  @Override
-  public String getName() {
-    return "http";
+  private HttpConfigClientFactory() {
+    throw new UnsupportedOperationException();
   }
 
-  @Override
-  public ConfigClient createClient() {
-    WatchNotificationHttpTransportFactory watchTransportFactory = ServiceBootstrap.loadPrimary(
-        WatchNotificationHttpTransportFactory.class);
-    HttpTransport watchTransport = watchTransportFactory.getHttpTransport();
+  public static ConfigClient createClient(HttpConfigClientProperties properties) {
+
+    HttpTransportFactory transportFactory = ServiceBootstrap.loadPrimary(
+        HttpTransportFactory.class);
+
+    HttpTransportProperties watchProperties = HttpTransportProperties.builder()
+        .defaultConnectTimeout(properties.getWatchNotificationConnectTimeout())
+        .defaultReadTimeout(properties.getWatchNotificationReadTimeout())
+        .build();
+    HttpTransport watchTransport = transportFactory.create(watchProperties);
     Objects.requireNonNull(watchTransport, "watchTransport");
 
-    GetConfigHttpTransportFactory getConfigTransportFactory = ServiceBootstrap.loadPrimary(
-        GetConfigHttpTransportFactory.class);
-    HttpTransport getTransport = getConfigTransportFactory.getHttpTransport();
+    HttpTransportProperties getProperties = HttpTransportProperties.builder()
+        .defaultConnectTimeout(properties.getGetConfigConnectTimeout())
+        .defaultReadTimeout(properties.getGetConfigReadTimeout())
+        .build();
+    HttpTransport getTransport = transportFactory.create(getProperties);
     Objects.requireNonNull(getTransport, "getTransport");
 
     return new HttpConfigClient(watchTransport, getTransport);
-  }
-
-  @Override
-  public int getOrder() {
-    return ORDER;
   }
 }

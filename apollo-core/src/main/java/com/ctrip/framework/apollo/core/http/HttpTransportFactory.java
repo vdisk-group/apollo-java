@@ -14,25 +14,13 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.api.http.v1.transport;
+package com.ctrip.framework.apollo.core.http;
 
-public class HttpStatusCodeException extends RuntimeException {
+import com.ctrip.framework.apollo.core.spi.Ordered;
+import javax.annotation.Nonnull;
 
-  private static final long serialVersionUID = 9125200635296114846L;
+public interface HttpTransportFactory extends Ordered {
 
-  private final int statusCode;
-
-  public HttpStatusCodeException(String message, int statusCode) {
-    super(message);
-    this.statusCode = statusCode;
-  }
-
-  public HttpStatusCodeException(String message, int statusCode, Throwable cause) {
-    super(message, cause);
-    this.statusCode = statusCode;
-  }
-
-  public int getStatusCode() {
-    return this.statusCode;
-  }
+  @Nonnull
+  HttpTransport create(@Nonnull HttpTransportProperties properties);
 }

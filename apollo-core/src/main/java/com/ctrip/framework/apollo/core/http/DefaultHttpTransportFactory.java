@@ -14,21 +14,22 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.api.http.v1.config;
+package com.ctrip.framework.apollo.core.http;
 
-import com.ctrip.framework.apollo.client.api.http.v1.transport.DefaultHttpTransport;
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpTransport;
 import com.ctrip.framework.apollo.core.spi.Ordered;
+import java.util.Objects;
+import javax.annotation.Nonnull;
 
-public class DefaultGetConfigHttpTransportFactory implements GetConfigHttpTransportFactory {
+public class DefaultHttpTransportFactory implements
+    HttpTransportFactory {
 
   public static final int ORDER = Ordered.LOWEST_PRECEDENCE - 100;
 
-  private static final DefaultHttpTransport HTTP_TRANSPORT = new DefaultHttpTransport(1000, 5000);
-
+  @Nonnull
   @Override
-  public HttpTransport getHttpTransport() {
-    return HTTP_TRANSPORT;
+  public HttpTransport create(@Nonnull HttpTransportProperties properties) {
+    Objects.requireNonNull(properties, "properties");
+    return new DefaultHttpTransport(properties);
   }
 
   @Override

@@ -71,8 +71,7 @@ class HttpConfigClientTest {
 
   @Test
   void watch_ok() {
-    HttpConfigClientFactory factory = new HttpConfigClientFactory();
-    ConfigClient client = factory.createClient();
+    ConfigClient client = this.createClient();
 
     Endpoint endpoint = Endpoint.builder()
         .address("http://localhost:" + this.port)
@@ -103,6 +102,16 @@ class HttpConfigClientTest {
         serverNotification.getNotificationId());
 
     assertWatchRequest(request, lastRequest);
+  }
+
+  private ConfigClient createClient() {
+    HttpConfigClientProperties properties = HttpConfigClientProperties.builder()
+        .watchNotificationConnectTimeout(1_000)
+        .watchNotificationReadTimeout(90_000)
+        .getConfigConnectTimeout(1_000)
+        .getConfigReadTimeout(5_000)
+        .build();
+    return HttpConfigClientFactory.createClient(properties);
   }
 
   private static void assertWatchRequest(WatchNotificationsRequest request,
@@ -152,8 +161,7 @@ class HttpConfigClientTest {
 
   @Test
   void watch_not_modified() {
-    HttpConfigClientFactory factory = new HttpConfigClientFactory();
-    ConfigClient client = factory.createClient();
+    ConfigClient client = createClient();
 
     Endpoint endpoint = Endpoint.builder()
         .address("http://localhost:" + this.port)
@@ -187,8 +195,7 @@ class HttpConfigClientTest {
 
   @Test
   void get_ok() {
-    HttpConfigClientFactory factory = new HttpConfigClientFactory();
-    ConfigClient client = factory.createClient();
+    ConfigClient client = createClient();
 
     Endpoint endpoint = Endpoint.builder()
         .address("http://localhost:" + this.port)
@@ -279,8 +286,7 @@ class HttpConfigClientTest {
 
   @Test
   void get_not_modified() {
-    HttpConfigClientFactory factory = new HttpConfigClientFactory();
-    ConfigClient client = factory.createClient();
+    ConfigClient client = createClient();
 
     Endpoint endpoint = Endpoint.builder()
         .address("http://localhost:" + this.port)

@@ -22,6 +22,11 @@ package com.ctrip.framework.apollo.exceptions;
 public class ApolloConfigStatusCodeException extends RuntimeException{
   private final int m_statusCode;
 
+  public ApolloConfigStatusCodeException(int statusCode, String message, Throwable cause) {
+    super(String.format("[status code: %d] %s", statusCode, message), cause);
+    this.m_statusCode = statusCode;
+  }
+
   public ApolloConfigStatusCodeException(int statusCode, String message) {
     super(String.format("[status code: %d] %s", statusCode, message));
     this.m_statusCode = statusCode;

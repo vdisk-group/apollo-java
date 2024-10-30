@@ -14,11 +14,17 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.api.http.v1.config;
+package com.ctrip.framework.apollo.core.http;
 
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpTransportFactory;
-import com.ctrip.framework.apollo.core.spi.Ordered;
+public class HttpTransportException extends RuntimeException {
 
-public interface GetConfigHttpTransportFactory extends HttpTransportFactory, Ordered {
+  private static final long serialVersionUID = -8890261304815428220L;
 
+  public HttpTransportException(String message) {
+    super(message);
+  }
+
+  public HttpTransportException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

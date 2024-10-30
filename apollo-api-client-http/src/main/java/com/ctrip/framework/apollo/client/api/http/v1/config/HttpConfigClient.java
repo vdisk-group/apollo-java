@@ -16,11 +16,6 @@
  */
 package com.ctrip.framework.apollo.client.api.http.v1.config;
 
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpException;
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpRequest;
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpResponse;
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpStatusCodeException;
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpTransport;
 import com.ctrip.framework.apollo.client.api.http.v1.util.InternalCollectionUtil;
 import com.ctrip.framework.apollo.client.api.http.v1.util.InternalHttpUtil;
 import com.ctrip.framework.apollo.client.api.v1.Endpoint;
@@ -40,6 +35,11 @@ import com.ctrip.framework.apollo.client.api.v1.config.WatchNotificationsStatus;
 import com.ctrip.framework.apollo.core.dto.ApolloConfig;
 import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
 import com.ctrip.framework.apollo.core.dto.ApolloNotificationMessages;
+import com.ctrip.framework.apollo.core.http.HttpTransport;
+import com.ctrip.framework.apollo.core.http.HttpTransportException;
+import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
+import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
+import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
 import com.ctrip.framework.apollo.core.signature.Signature;
 import com.ctrip.framework.apollo.core.utils.StringUtils;
 import com.google.common.collect.Maps;
@@ -75,15 +75,16 @@ public class HttpConfigClient implements ConfigClient {
   @Override
   public WatchNotificationsResponse watch(Endpoint endpoint, WatchNotificationsRequest request)
       throws ConfigException {
-    HttpRequest httpRequest = this.toWatchHttpRequest(endpoint, request);
-    HttpResponse<List<ApolloConfigNotification>> httpResponse = this.doGet(
+    HttpTransportRequest httpTransportRequest = this.toWatchHttpRequest(endpoint, request);
+    HttpTransportResponse<List<ApolloConfigNotification>> httpTransportResponse = this.doGet(
         "Watch notifications", this.watchTransport,
-        httpRequest, WATCH_NOTIFICATIONS_RESPONSE_TYPE);
+        httpTransportRequest, WATCH_NOTIFICATIONS_RESPONSE_TYPE);
 
-    return this.toWatchResponse(httpResponse);
+    return this.toWatchResponse(httpTransportResponse);
   }
 
-  private HttpRequest toWatchHttpRequest(Endpoint endpoint, WatchNotificationsRequest request) {
+  private HttpTransportRequest toWatchHttpRequest(Endpoint endpoint,
+      WatchNotificationsRequest request) {
     Map<String, String> queryParams = new LinkedHashMap<>();
     queryParams.put("appId", request.getAppId());
     queryParams.put("cluster", request.getCluster());
@@ -101,11 +102,12 @@ public class HttpConfigClient implements ConfigClient {
     String query = InternalHttpUtil.toQueryString(queryParams);
     String uri = MessageFormat.format("{0}/notifications/v2{1}", actualAddress, query);
 
-    HttpRequest httpRequest = new HttpRequest(uri);
+    HttpTransportRequest.Builder requestBuilder = HttpTransportRequest.builder()
+        .url(uri);
 
-    this.signWatchNotifications(uri, request, httpRequest);
+    this.signWatchNotifications(uri, request, requestBuilder);
 
-    return httpRequest;
+    return requestBuilder.build();
   }
 
   private String assembleNotifications(List<NotificationDefinition> notifications) {
@@ -121,30 +123,30 @@ public class HttpConfigClient implements ConfigClient {
 
 
   private void signWatchNotifications(String uri, WatchNotificationsRequest request,
-      HttpRequest httpRequest) {
+      HttpTransportRequest.Builder requestBuilder) {
     String accessKeySecret = request.getAccessKeySecret();
     String appId = request.getAppId();
-    this.signHttpRequest(uri, appId, accessKeySecret, httpRequest);
+    this.signHttpRequest(uri, appId, accessKeySecret, requestBuilder);
   }
 
   private void signHttpRequest(String uri, String appId, String accessKeySecret,
-      HttpRequest httpRequest) {
+      HttpTransportRequest.Builder requestBuilder) {
     if (!StringUtils.isBlank(accessKeySecret)) {
       Map<String, String> headers = Maps.newLinkedHashMap();
       Map<String, String> authorizationHeaders = Signature.buildHttpHeaders(uri, appId,
           accessKeySecret);
       headers.putAll(authorizationHeaders);
-      httpRequest.setHeaders(headers);
+      requestBuilder.headers(headers);
     }
   }
 
-  private <T> HttpResponse<T> doGet(String scene,
-      HttpTransport transport, HttpRequest httpRequest, Type responseType) {
-    HttpResponse<T> httpResponse;
+  private <T> HttpTransportResponse<T> doGet(String scene,
+      HttpTransport transport, HttpTransportRequest httpTransportRequest, Type responseType) {
+    HttpTransportResponse<T> httpTransportResponse;
     try {
-      httpResponse = transport.doGet(
-          httpRequest, responseType);
-    } catch (HttpStatusCodeException e) {
+      httpTransportResponse = transport.doGet(
+          httpTransportRequest, responseType);
+    } catch (HttpTransportStatusCodeException e) {
       if (e.getStatusCode() == 404) {
         throw new ConfigNotFoundException();
       } else {
@@ -153,7 +155,7 @@ public class HttpConfigClient implements ConfigClient {
                 scene, e.getStatusCode()),
             e);
       }
-    } catch (HttpException e) {
+    } catch (HttpTransportException e) {
       throw new ConfigException(
           MessageFormat.format("{0} failed. Http error message: {1}",
               scene, e.getLocalizedMessage()), e);
@@ -162,13 +164,13 @@ public class HttpConfigClient implements ConfigClient {
           MessageFormat.format("{0} failed. Error message: {1}",
               scene, e.getLocalizedMessage()), e);
     }
-    return httpResponse;
+    return httpTransportResponse;
   }
 
   private WatchNotificationsResponse toWatchResponse(
-      HttpResponse<List<ApolloConfigNotification>> httpResponse) {
-    List<ApolloConfigNotification> httpNotifications = httpResponse.getBody();
-    if (httpResponse.getStatusCode() == 304) {
+      HttpTransportResponse<List<ApolloConfigNotification>> httpTransportResponse) {
+    List<ApolloConfigNotification> httpNotifications = httpTransportResponse.getBody();
+    if (httpTransportResponse.getStatusCode() == 304) {
       return WatchNotificationsResponse.builder()
           .status(WatchNotificationsStatus.NOT_MODIFIED)
           .notifications(Collections.emptyList())
@@ -220,14 +222,15 @@ public class HttpConfigClient implements ConfigClient {
   public GetConfigResponse get(Endpoint endpoint, GetConfigRequest request)
       throws ConfigException, ConfigNotFoundException {
 
-    HttpRequest httpRequest = this.toGetConfigHttpRequest(endpoint, request);
+    HttpTransportRequest httpTransportRequest = this.toGetConfigHttpRequest(endpoint, request);
 
-    HttpResponse<ApolloConfig> httpResponse = this.doGet("Get config", this.getTransport,
-        httpRequest,
+    HttpTransportResponse<ApolloConfig> httpTransportResponse = this.doGet("Get config",
+        this.getTransport,
+        httpTransportRequest,
         ApolloConfig.class);
 
-    ApolloConfig apolloConfig = httpResponse.getBody();
-    if (httpResponse.getStatusCode() == 304) {
+    ApolloConfig apolloConfig = httpTransportResponse.getBody();
+    if (httpTransportResponse.getStatusCode() == 304) {
       return GetConfigResponse.builder()
           .status(GetConfigStatus.NOT_MODIFIED)
           .build();
@@ -239,7 +242,7 @@ public class HttpConfigClient implements ConfigClient {
         .build();
   }
 
-  private HttpRequest toGetConfigHttpRequest(Endpoint endpoint, GetConfigRequest request) {
+  private HttpTransportRequest toGetConfigHttpRequest(Endpoint endpoint, GetConfigRequest request) {
     Map<String, String> queryParams = new LinkedHashMap<>();
 
     String releaseKey = request.getReleaseKey();
@@ -275,11 +278,12 @@ public class HttpConfigClient implements ConfigClient {
         request.getAppId(),
         request.getCluster(), request.getNamespace(), query);
 
-    HttpRequest httpRequest = new HttpRequest(uri);
+    HttpTransportRequest.Builder requestBuilder = HttpTransportRequest.builder()
+        .url(uri);
 
-    this.signGetConfig(uri, request, httpRequest);
+    this.signGetConfig(uri, request, requestBuilder);
 
-    return httpRequest;
+    return requestBuilder.build();
   }
 
   private String assembleMessages(NotificationMessages messages) {
@@ -289,10 +293,10 @@ public class HttpConfigClient implements ConfigClient {
   }
 
   private void signGetConfig(String uri, GetConfigRequest request,
-      HttpRequest httpRequest) {
+      HttpTransportRequest.Builder requestBuilder) {
     String accessKeySecret = request.getAccessKeySecret();
     String appId = request.getAppId();
-    this.signHttpRequest(uri, appId, accessKeySecret, httpRequest);
+    this.signHttpRequest(uri, appId, accessKeySecret, requestBuilder);
   }
 
   private GetConfigResult toGetConfigResult(ApolloConfig apolloConfig) {

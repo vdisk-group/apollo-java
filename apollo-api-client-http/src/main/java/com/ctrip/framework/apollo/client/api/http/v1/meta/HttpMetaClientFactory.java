@@ -16,33 +16,31 @@
  */
 package com.ctrip.framework.apollo.client.api.http.v1.meta;
 
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpTransport;
 import com.ctrip.framework.apollo.client.api.v1.meta.MetaClient;
-import com.ctrip.framework.apollo.client.api.v1.meta.MetaClientFactory;
-import com.ctrip.framework.apollo.core.spi.Ordered;
+import com.ctrip.framework.apollo.core.http.HttpTransport;
+import com.ctrip.framework.apollo.core.http.HttpTransportFactory;
+import com.ctrip.framework.apollo.core.http.HttpTransportProperties;
 import com.ctrip.framework.foundation.internals.ServiceBootstrap;
 import java.util.Objects;
 
-public class HttpMetaClientFactory implements MetaClientFactory {
+public class HttpMetaClientFactory {
 
-  public static final int ORDER = Ordered.LOWEST_PRECEDENCE - 200;
-
-  @Override
-  public String getName() {
-    return "http";
+  private HttpMetaClientFactory() {
+    throw new UnsupportedOperationException();
   }
 
-  @Override
-  public MetaClient createClient() {
-    MetaHttpTransportFactory transportFactory = ServiceBootstrap.loadPrimary(
-        MetaHttpTransportFactory.class);
-    HttpTransport httpTransport = transportFactory.getHttpTransport();
-    Objects.requireNonNull(httpTransport, "httpTransport");
-    return new HttpMetaClient(httpTransport);
-  }
+  public static MetaClient createClient(HttpMetaClientProperties properties) {
 
-  @Override
-  public int getOrder() {
-    return ORDER;
+    HttpTransportFactory transportFactory = ServiceBootstrap.loadPrimary(
+        HttpTransportFactory.class);
+
+    HttpTransportProperties getServicesProperties = HttpTransportProperties.builder()
+        .defaultConnectTimeout(properties.getGetServicesConnectTimeout())
+        .defaultReadTimeout(properties.getGetServicesReadTimeout())
+        .build();
+
+    HttpTransport getServicesTransport = transportFactory.create(getServicesProperties);
+    Objects.requireNonNull(getServicesTransport, "getServicesTransport");
+    return new HttpMetaClient(getServicesTransport);
   }
 }

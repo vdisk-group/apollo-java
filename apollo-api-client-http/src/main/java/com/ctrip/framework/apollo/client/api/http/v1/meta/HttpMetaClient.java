@@ -16,11 +16,6 @@
  */
 package com.ctrip.framework.apollo.client.api.http.v1.meta;
 
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpException;
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpRequest;
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpResponse;
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpStatusCodeException;
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpTransport;
 import com.ctrip.framework.apollo.client.api.http.v1.util.InternalCollectionUtil;
 import com.ctrip.framework.apollo.client.api.http.v1.util.InternalHttpUtil;
 import com.ctrip.framework.apollo.client.api.v1.Endpoint;
@@ -29,6 +24,11 @@ import com.ctrip.framework.apollo.client.api.v1.meta.GetServicesRequest;
 import com.ctrip.framework.apollo.client.api.v1.meta.MetaClient;
 import com.ctrip.framework.apollo.client.api.v1.meta.MetaException;
 import com.ctrip.framework.apollo.core.dto.ServiceDTO;
+import com.ctrip.framework.apollo.core.http.HttpTransport;
+import com.ctrip.framework.apollo.core.http.HttpTransportException;
+import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
+import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
+import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
 import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import com.google.common.reflect.TypeToken;
@@ -45,19 +45,22 @@ public class HttpMetaClient implements MetaClient {
   private static final Type GET_SERVICES_RESPONSE_TYPE = new TypeToken<List<ServiceDTO>>() {
   }.getType();
 
-  private final HttpTransport httpTransport;
+  private final HttpTransport getServicesTransport;
 
-  public HttpMetaClient(HttpTransport httpTransport) {
-    this.httpTransport = Objects.requireNonNull(httpTransport, "httpTransport");
+  public HttpMetaClient(HttpTransport getServicesTransport) {
+    this.getServicesTransport = Objects.requireNonNull(getServicesTransport,
+        "getServicesTransport");
   }
 
   @Override
   public List<ConfigServiceInstance> getServices(Endpoint endpoint,
       GetServicesRequest request) {
-    HttpRequest httpRequest = this.toGetServicesHttpRequest(endpoint, request);
-    HttpResponse<List<ServiceDTO>> httpResponse = this.doGet("Get config services", httpRequest,
+    HttpTransportRequest httpTransportRequest = this.toGetServicesHttpRequest(endpoint, request);
+    HttpTransportResponse<List<ServiceDTO>> httpTransportResponse = this.doGet(
+        "Get config services",
+        httpTransportRequest,
         GET_SERVICES_RESPONSE_TYPE);
-    List<ServiceDTO> serviceDTOList = httpResponse.getBody();
+    List<ServiceDTO> serviceDTOList = httpTransportResponse.getBody();
     if (InternalCollectionUtil.isEmpty(serviceDTOList)) {
       return Collections.emptyList();
     }
@@ -73,7 +76,8 @@ public class HttpMetaClient implements MetaClient {
     return Collections.unmodifiableList(configServiceInstanceList);
   }
 
-  private HttpRequest toGetServicesHttpRequest(Endpoint endpoint, GetServicesRequest request) {
+  private HttpTransportRequest toGetServicesHttpRequest(Endpoint endpoint,
+      GetServicesRequest request) {
     Map<String, String> queryParams = Maps.newHashMap();
     queryParams.put("appId", request.getAppId());
     String clientIp = request.getClientIp();
@@ -86,22 +90,23 @@ public class HttpMetaClient implements MetaClient {
     String query = InternalHttpUtil.toQueryString(queryParams);
 
     String uri = MessageFormat.format("{0}/services/config{1}", actualAddress, query);
-    HttpRequest httpRequest = new HttpRequest(uri);
-    return httpRequest;
+    return HttpTransportRequest.builder()
+        .url(uri)
+        .build();
   }
 
-  private <T> HttpResponse<T> doGet(String scene,
-      HttpRequest httpRequest, Type responseType) {
-    HttpResponse<T> httpResponse;
+  private <T> HttpTransportResponse<T> doGet(String scene,
+      HttpTransportRequest httpTransportRequest, Type responseType) {
+    HttpTransportResponse<T> httpTransportResponse;
     try {
-      httpResponse = this.httpTransport.doGet(
-          httpRequest, responseType);
-    } catch (HttpStatusCodeException e) {
+      httpTransportResponse = this.getServicesTransport.doGet(
+          httpTransportRequest, responseType);
+    } catch (HttpTransportStatusCodeException e) {
       throw new MetaException(
           MessageFormat.format("{0} failed. Http status code: {1}",
               scene, e.getStatusCode()),
           e);
-    } catch (HttpException e) {
+    } catch (HttpTransportException e) {
       throw new MetaException(
           MessageFormat.format("{0} failed. Http error message: {1}",
               scene, e.getLocalizedMessage()), e);
@@ -110,6 +115,6 @@ public class HttpMetaClient implements MetaClient {
           MessageFormat.format("{0} failed. Error message: {1}",
               scene, e.getLocalizedMessage()), e);
     }
-    return httpResponse;
+    return httpTransportResponse;
   }
 }

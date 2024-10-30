@@ -14,25 +14,24 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.api.http.v1.meta;
+package com.ctrip.framework.apollo.spi;
 
-import com.ctrip.framework.apollo.client.api.http.v1.transport.DefaultHttpTransport;
-import com.ctrip.framework.apollo.client.api.http.v1.transport.HttpTransport;
+import com.ctrip.framework.apollo.client.api.v1.config.ConfigClient;
 import com.ctrip.framework.apollo.core.spi.Ordered;
 
-public class DefaultMetaHttpTransportFactory implements MetaHttpTransportFactory {
+public interface ConfigClientProvider extends Ordered {
 
-  public static final int ORDER = Ordered.LOWEST_PRECEDENCE - 100;
+  /**
+   * get the name of Provider
+   *
+   * @return name of Provider
+   */
+  String getName();
 
-  private static final DefaultHttpTransport HTTP_TRANSPORT = new DefaultHttpTransport(1000, 1000);
-
-  @Override
-  public HttpTransport getHttpTransport() {
-    return HTTP_TRANSPORT;
-  }
-
-  @Override
-  public int getOrder() {
-    return ORDER;
-  }
+  /**
+   * get an instance of ConfigClient
+   *
+   * @return ConfigClient
+   */
+  ConfigClient createClient();
 }
