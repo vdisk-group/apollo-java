@@ -58,7 +58,7 @@ public class HttpConfigClient implements ConfigClient {
 
   private static final Gson GSON = new Gson();
 
-  private static final Type WATCH_NOTIFICATIONS_RESPONSE_TYPE = new TypeToken<List<ApolloConfigNotification>>() {
+  static final Type WATCH_NOTIFICATIONS_RESPONSE_TYPE = new TypeToken<List<ApolloConfigNotification>>() {
   }.getType();
 
   private final HttpTransport httpTransport;

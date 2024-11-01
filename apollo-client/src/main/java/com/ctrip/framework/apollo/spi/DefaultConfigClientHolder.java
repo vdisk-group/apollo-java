@@ -31,6 +31,35 @@ public class DefaultConfigClientHolder implements ConfigClientHolder {
     return LazyHolder.CLIENT;
   }
 
+  static ConfigClient initClient() {
+    ConfigUtil configUtil = ApolloInjector.getInstance(ConfigUtil.class);
+    String clientType = configUtil.getClientType();
+    ConfigClientProvider provider = getProvider(clientType);
+    return provider.createClient();
+  }
+
+  private static ConfigClientProvider getProvider(String clientType) {
+    List<ConfigClientProvider> providers = ServiceBootstrap.loadAllOrdered(
+        ConfigClientProvider.class);
+    if (providers.isEmpty()) {
+      throw new IllegalStateException(String.format(
+          "No implementation defined in /META-INF/services/%s, please check whether the file exists and has the right implementation class!",
+          ConfigClientProvider.class.getName()));
+    }
+    List<ConfigClientProvider> typedProviders = new ArrayList<>(providers.size());
+    for (ConfigClientProvider provider : providers) {
+      if (Objects.equals(clientType, provider.getClientType())) {
+        typedProviders.add(provider);
+      }
+    }
+    if (typedProviders.isEmpty()) {
+      throw new IllegalStateException(String.format(
+          "No implementation defined in /META-INF/services/%s for [client-type:%s], please check whether the file exists and has the right implementation class!",
+          ConfigClientProvider.class.getName(), clientType));
+    }
+    return typedProviders.get(0);
+  }
+
   /**
    * lazy holder
    */
@@ -38,33 +67,5 @@ public class DefaultConfigClientHolder implements ConfigClientHolder {
 
     static final ConfigClient CLIENT = initClient();
 
-    private static ConfigClient initClient() {
-      ConfigUtil configUtil = ApolloInjector.getInstance(ConfigUtil.class);
-      String clientType = configUtil.getClientType();
-      ConfigClientProvider provider = getProvider(clientType);
-      return provider.createClient();
-    }
-
-    private static ConfigClientProvider getProvider(String clientType) {
-      List<ConfigClientProvider> providers = ServiceBootstrap.loadAllOrdered(
-          ConfigClientProvider.class);
-      if (providers.isEmpty()) {
-        throw new IllegalStateException(String.format(
-            "No implementation defined in /META-INF/services/%s, please check whether the file exists and has the right implementation class!",
-            ConfigClientProvider.class.getName()));
-      }
-      List<ConfigClientProvider> typedProviders = new ArrayList<>(providers.size());
-      for (ConfigClientProvider provider : providers) {
-        if (Objects.equals(clientType, provider.getClientType())) {
-          typedProviders.add(provider);
-        }
-      }
-      if (typedProviders.isEmpty()) {
-        throw new IllegalStateException(String.format(
-            "No implementation defined in /META-INF/services/%s for [client-type:%s], please check whether the file exists and has the right implementation class!",
-            ConfigClientProvider.class.getName(), clientType));
-      }
-      return typedProviders.get(0);
-    }
   }
 }

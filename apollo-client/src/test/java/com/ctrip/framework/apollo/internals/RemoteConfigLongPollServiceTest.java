@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
 
 import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.build.MockInjector;
+import com.ctrip.framework.apollo.client.api.http.v1.config.HttpConfigClientTestHelper;
 import com.ctrip.framework.apollo.client.api.v1.Endpoint;
 import com.ctrip.framework.apollo.client.api.v1.config.ConfigClient;
 import com.ctrip.framework.apollo.client.api.v1.config.WatchNotificationsRequest;
@@ -41,6 +42,7 @@ import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
 import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
 import com.ctrip.framework.apollo.core.signature.Signature;
 import com.ctrip.framework.apollo.spi.ConfigClientHolder;
+import com.ctrip.framework.apollo.spi.MockConfigClientHolder;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -62,7 +64,6 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
-import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
@@ -86,6 +87,7 @@ public class RemoteConfigLongPollServiceTest {
   @Before
   public void setUp() throws Exception {
     MockInjector.setInstance(HttpTransport.class, httpTransport);
+    MockInjector.setInstance(ConfigClientHolder.class, new MockConfigClientHolder());
 
     someServerUrl = "http://someServer";
     ServiceDTO serviceDTO = mock(ServiceDTO.class);
@@ -96,9 +98,7 @@ public class RemoteConfigLongPollServiceTest {
     MockInjector.setInstance(ConfigUtil.class, new MockConfigUtil());
 
     remoteConfigLongPollService = new RemoteConfigLongPollService();
-
-    responseType =
-        (Type) ReflectionTestUtils.getField(remoteConfigLongPollService, "m_responseType");
+    responseType = HttpConfigClientTestHelper.getWatchNotificationsResponseType();
 
     someAppId = "someAppId";
     someCluster = "someCluster";

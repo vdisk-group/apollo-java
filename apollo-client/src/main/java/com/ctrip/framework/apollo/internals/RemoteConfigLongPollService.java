@@ -51,10 +51,8 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.escape.Escaper;
 import com.google.common.net.UrlEscapers;
-import com.google.common.reflect.TypeToken;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.gson.Gson;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -88,7 +86,6 @@ public class RemoteConfigLongPollService {
   private final Multimap<String, RemoteConfigRepository> m_longPollNamespaces;
   private final ConcurrentMap<String, Long> m_notifications;
   private final Map<String, ApolloNotificationMessages> m_remoteNotificationMessages;//namespaceName -> watchedKey -> notificationId
-  private Type m_responseType;
   private static final Gson GSON = new Gson();
   private ConfigUtil m_configUtil;
   private final ConfigClientHolder m_configClientHolder;
@@ -109,8 +106,6 @@ public class RemoteConfigLongPollService {
         Multimaps.synchronizedSetMultimap(HashMultimap.<String, RemoteConfigRepository>create());
     m_notifications = Maps.newConcurrentMap();
     m_remoteNotificationMessages = Maps.newConcurrentMap();
-    m_responseType = new TypeToken<List<ApolloConfigNotification>>() {
-    }.getType();
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
     m_configClientHolder = ApolloInjector.getInstance(ConfigClientHolder.class);
     m_serviceLocator = ApolloInjector.getInstance(ConfigServiceLocator.class);

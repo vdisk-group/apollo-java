@@ -49,6 +49,7 @@ import com.ctrip.framework.apollo.enums.ConfigSourceType;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
 import com.ctrip.framework.apollo.spi.ConfigClientHolder;
+import com.ctrip.framework.apollo.spi.MockConfigClientHolder;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.apollo.util.OrderedProperties;
 import com.ctrip.framework.apollo.util.factory.PropertiesFactory;
@@ -118,6 +119,7 @@ public class RemoteConfigRepositoryTest {
 
     httpTransport = spy(new MockHttpTransport());
     MockInjector.setInstance(HttpTransport.class, httpTransport);
+    MockInjector.setInstance(ConfigClientHolder.class, new MockConfigClientHolder());
 
     remoteConfigLongPollService = new RemoteConfigLongPollService();
 
