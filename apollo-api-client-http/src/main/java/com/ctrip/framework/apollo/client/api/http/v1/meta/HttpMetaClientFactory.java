@@ -18,10 +18,6 @@ package com.ctrip.framework.apollo.client.api.http.v1.meta;
 
 import com.ctrip.framework.apollo.client.api.v1.meta.MetaClient;
 import com.ctrip.framework.apollo.core.http.HttpTransport;
-import com.ctrip.framework.apollo.core.http.HttpTransportFactory;
-import com.ctrip.framework.apollo.core.http.HttpTransportProperties;
-import com.ctrip.framework.foundation.internals.ServiceBootstrap;
-import java.util.Objects;
 
 public class HttpMetaClientFactory {
 
@@ -29,18 +25,9 @@ public class HttpMetaClientFactory {
     throw new UnsupportedOperationException();
   }
 
-  public static MetaClient createClient(HttpMetaClientProperties properties) {
+  public static MetaClient createClient(HttpTransport httpTransport,
+      HttpMetaClientProperties properties) {
 
-    HttpTransportFactory transportFactory = ServiceBootstrap.loadPrimary(
-        HttpTransportFactory.class);
-
-    HttpTransportProperties getServicesProperties = HttpTransportProperties.builder()
-        .defaultConnectTimeout(properties.getDiscoveryConnectTimeout())
-        .defaultReadTimeout(properties.getDiscoveryReadTimeout())
-        .build();
-
-    HttpTransport getServicesTransport = transportFactory.create(getServicesProperties);
-    Objects.requireNonNull(getServicesTransport, "getServicesTransport");
-    return new HttpMetaClient(getServicesTransport);
+    return new HttpMetaClient(httpTransport, properties);
   }
 }

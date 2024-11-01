@@ -37,6 +37,10 @@ import com.ctrip.framework.apollo.client.api.v1.config.WatchNotificationsStatus;
 import com.ctrip.framework.apollo.core.dto.ApolloConfig;
 import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
 import com.ctrip.framework.apollo.core.dto.ApolloNotificationMessages;
+import com.ctrip.framework.apollo.core.http.HttpTransport;
+import com.ctrip.framework.apollo.core.http.HttpTransportFactory;
+import com.ctrip.framework.apollo.core.http.HttpTransportProperties;
+import com.ctrip.framework.foundation.internals.ServiceBootstrap;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -105,13 +109,22 @@ class HttpConfigClientTest {
   }
 
   private ConfigClient createClient() {
+
+    HttpTransportProperties transportProperties = HttpTransportProperties.builder()
+        .defaultConnectTimeout(1_000)
+        .defaultReadTimeout(5_000)
+        .build();
+    HttpTransportFactory transportFactory = ServiceBootstrap.loadPrimary(
+        HttpTransportFactory.class);
+    HttpTransport httpTransport = transportFactory.create(
+        transportProperties);
     HttpConfigClientProperties properties = HttpConfigClientProperties.builder()
         .watchNotificationConnectTimeout(1_000)
         .watchNotificationReadTimeout(90_000)
         .getConfigConnectTimeout(1_000)
         .getConfigReadTimeout(5_000)
         .build();
-    return HttpConfigClientFactory.createClient(properties);
+    return HttpConfigClientFactory.createClient(httpTransport, properties);
   }
 
   private static void assertWatchRequest(WatchNotificationsRequest request,

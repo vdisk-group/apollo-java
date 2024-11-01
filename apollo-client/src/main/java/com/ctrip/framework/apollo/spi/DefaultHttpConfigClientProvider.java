@@ -20,6 +20,7 @@ import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.client.api.http.v1.config.HttpConfigClientFactory;
 import com.ctrip.framework.apollo.client.api.http.v1.config.HttpConfigClientProperties;
 import com.ctrip.framework.apollo.client.api.v1.config.ConfigClient;
+import com.ctrip.framework.apollo.core.http.HttpTransport;
 import com.ctrip.framework.apollo.core.spi.Ordered;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 
@@ -42,6 +43,8 @@ public class DefaultHttpConfigClientProvider implements ConfigClientProvider {
 
   @Override
   public ConfigClient createClient() {
+    HttpTransport httpTransport = ApolloInjector.getInstance(HttpTransport.class);
+
     ConfigUtil configUtil = ApolloInjector.getInstance(ConfigUtil.class);
     HttpConfigClientProperties properties = HttpConfigClientProperties.builder()
         .watchNotificationConnectTimeout(configUtil.getConnectTimeout())
@@ -49,7 +52,8 @@ public class DefaultHttpConfigClientProvider implements ConfigClientProvider {
         .getConfigConnectTimeout(configUtil.getConnectTimeout())
         .getConfigReadTimeout(configUtil.getReadTimeout())
         .build();
-    return HttpConfigClientFactory.createClient(properties);
+
+    return HttpConfigClientFactory.createClient(httpTransport, properties);
   }
 
   @Override

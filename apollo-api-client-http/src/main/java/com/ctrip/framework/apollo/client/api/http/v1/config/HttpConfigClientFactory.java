@@ -18,10 +18,6 @@ package com.ctrip.framework.apollo.client.api.http.v1.config;
 
 import com.ctrip.framework.apollo.client.api.v1.config.ConfigClient;
 import com.ctrip.framework.apollo.core.http.HttpTransport;
-import com.ctrip.framework.apollo.core.http.HttpTransportFactory;
-import com.ctrip.framework.apollo.core.http.HttpTransportProperties;
-import com.ctrip.framework.foundation.internals.ServiceBootstrap;
-import java.util.Objects;
 
 public class HttpConfigClientFactory {
 
@@ -29,25 +25,9 @@ public class HttpConfigClientFactory {
     throw new UnsupportedOperationException();
   }
 
-  public static ConfigClient createClient(HttpConfigClientProperties properties) {
+  public static ConfigClient createClient(HttpTransport httpTransport,
+      HttpConfigClientProperties properties) {
 
-    HttpTransportFactory transportFactory = ServiceBootstrap.loadPrimary(
-        HttpTransportFactory.class);
-
-    HttpTransportProperties watchProperties = HttpTransportProperties.builder()
-        .defaultConnectTimeout(properties.getWatchNotificationConnectTimeout())
-        .defaultReadTimeout(properties.getWatchNotificationReadTimeout())
-        .build();
-    HttpTransport watchTransport = transportFactory.create(watchProperties);
-    Objects.requireNonNull(watchTransport, "watchTransport");
-
-    HttpTransportProperties getProperties = HttpTransportProperties.builder()
-        .defaultConnectTimeout(properties.getGetConfigConnectTimeout())
-        .defaultReadTimeout(properties.getGetConfigReadTimeout())
-        .build();
-    HttpTransport getTransport = transportFactory.create(getProperties);
-    Objects.requireNonNull(getTransport, "getTransport");
-
-    return new HttpConfigClient(watchTransport, getTransport);
+    return new HttpConfigClient(httpTransport, properties);
   }
 }

@@ -223,9 +223,18 @@ public class RemoteConfigLongPollService {
         Tracer.logEvent("ApolloConfigException", ExceptionUtil.getDetailMessage(ex));
         transaction.setStatus(ex);
         long sleepTimeInSecond = m_longPollFailSchedulePolicyInSecond.fail();
-        logger.warn(
-            "Long polling failed, will retry in {} seconds. appId: {}, cluster: {}, namespaces: {}, long polling url: {}, reason: {}",
-            sleepTimeInSecond, appId, cluster, assembleNamespaces(), url, ExceptionUtil.getDetailMessage(ex));
+        if (logger.isDebugEnabled()) {
+          // stacktrace print in debug mode
+          logger.warn(
+              "Long polling failed, will retry in {} seconds. appId: {}, cluster: {}, namespaces: {}, long polling url: {}, reason: {}",
+              sleepTimeInSecond, appId, cluster, assembleNamespaces(), url,
+              ExceptionUtil.getDetailMessage(ex), ex);
+        } else {
+          logger.warn(
+              "Long polling failed, will retry in {} seconds. appId: {}, cluster: {}, namespaces: {}, long polling url: {}, reason: {}",
+              sleepTimeInSecond, appId, cluster, assembleNamespaces(), url,
+              ExceptionUtil.getDetailMessage(ex));
+        }
         try {
           TimeUnit.SECONDS.sleep(sleepTimeInSecond);
         } catch (InterruptedException ie) {

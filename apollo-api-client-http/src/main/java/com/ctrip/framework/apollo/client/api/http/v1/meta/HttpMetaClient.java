@@ -45,11 +45,15 @@ public class HttpMetaClient implements MetaClient {
   private static final Type GET_SERVICES_RESPONSE_TYPE = new TypeToken<List<ServiceDTO>>() {
   }.getType();
 
-  private final HttpTransport getServicesTransport;
+  private final HttpTransport httpTransport;
 
-  public HttpMetaClient(HttpTransport getServicesTransport) {
-    this.getServicesTransport = Objects.requireNonNull(getServicesTransport,
-        "getServicesTransport");
+  private final HttpMetaClientProperties properties;
+
+  public HttpMetaClient(HttpTransport httpTransport, HttpMetaClientProperties properties) {
+    Objects.requireNonNull(httpTransport, "httpTransport");
+    Objects.requireNonNull(properties, "properties");
+    this.httpTransport = httpTransport;
+    this.properties = properties;
   }
 
   @Override
@@ -101,6 +105,8 @@ public class HttpMetaClient implements MetaClient {
     String uri = this.toGetServicesUri(endpoint, request);
     return HttpTransportRequest.builder()
         .url(uri)
+        .connectTimeout(this.properties.getDiscoveryConnectTimeout())
+        .readTimeout(this.properties.getDiscoveryReadTimeout())
         .build();
   }
 
@@ -108,7 +114,7 @@ public class HttpMetaClient implements MetaClient {
       HttpTransportRequest httpTransportRequest, Type responseType) {
     HttpTransportResponse<T> httpTransportResponse;
     try {
-      httpTransportResponse = this.getServicesTransport.doGet(
+      httpTransportResponse = this.httpTransport.doGet(
           httpTransportRequest, responseType);
     } catch (HttpTransportStatusCodeException e) {
       throw new MetaException(

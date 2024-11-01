@@ -26,6 +26,7 @@ import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.text.MessageFormat;
 import java.util.Map;
 import java.util.Objects;
 import javax.annotation.Nullable;
@@ -148,10 +149,12 @@ public class DefaultHttpTransport implements HttpTransport {
       if (statusCode == 304) {
         return new HttpTransportResponse<>(statusCode, null);
       }
-    } catch (HttpTransportStatusCodeException ex) {
-      throw ex;
-    } catch (Throwable ex) {
-      throw new HttpTransportException("Could not complete get operation", ex);
+    } catch (HttpTransportStatusCodeException e) {
+      throw e;
+    } catch (Throwable e) {
+      String errorMessage = MessageFormat.format("Could not complete get operation, {0}: {1}",
+          e.getClass().getSimpleName(), e.getLocalizedMessage());
+      throw new HttpTransportException(errorMessage, e);
     } finally {
       if (isr != null) {
         try {

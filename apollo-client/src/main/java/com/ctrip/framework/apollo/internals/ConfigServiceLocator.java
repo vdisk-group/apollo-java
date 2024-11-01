@@ -33,7 +33,6 @@ import com.ctrip.framework.apollo.tracer.Tracer;
 import com.ctrip.framework.apollo.tracer.spi.Transaction;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.apollo.util.ExceptionUtil;
-import com.ctrip.framework.apollo.util.http.HttpClient;
 import com.ctrip.framework.foundation.Foundation;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -42,8 +41,6 @@ import com.google.common.collect.Maps;
 import com.google.common.escape.Escaper;
 import com.google.common.net.UrlEscapers;
 import com.google.common.util.concurrent.RateLimiter;
-import com.google.gson.reflect.TypeToken;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -55,11 +52,9 @@ import org.slf4j.Logger;
 
 public class ConfigServiceLocator {
   private static final Logger logger = DeferredLoggerFactory.getLogger(ConfigServiceLocator.class);
-  private HttpClient m_httpClient;
   private final MetaClientHolder m_metaClientHolder;
   private ConfigUtil m_configUtil;
   private AtomicReference<List<ServiceDTO>> m_configServices;
-  private Type m_responseType;
   private ScheduledExecutorService m_executorService;
   /**
    * forbid submit multiple task to {@link #m_executorService}，
@@ -77,9 +72,6 @@ public class ConfigServiceLocator {
   public ConfigServiceLocator() {
     List<ServiceDTO> initial = Lists.newArrayList();
     m_configServices = new AtomicReference<>(initial);
-    m_responseType = new TypeToken<List<ServiceDTO>>() {
-    }.getType();
-    m_httpClient = ApolloInjector.getInstance(HttpClient.class);
     m_metaClientHolder = ApolloInjector.getInstance(MetaClientHolder.class);
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
     this.m_executorService = Executors.newScheduledThreadPool(1,
@@ -211,7 +203,9 @@ public class ConfigServiceLocator {
       updateConfigServices();
       return true;
     } catch (Throwable ex) {
-      //ignore
+      if (logger.isDebugEnabled()) {
+        logger.debug("Update config services failed {}", ExceptionUtil.getDetailMessage(ex), ex);
+      }
     }
     return false;
   }
@@ -266,6 +260,10 @@ public class ConfigServiceLocator {
         setConfigServices(services);
         return;
       } catch (Throwable ex) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("getConfigService failed [i:{}] {}", i, ExceptionUtil.getDetailMessage(ex),
+              ex);
+        }
         Tracer.logEvent("ApolloConfigException", ExceptionUtil.getDetailMessage(ex));
         transaction.setStatus(ex);
         exception = ex;

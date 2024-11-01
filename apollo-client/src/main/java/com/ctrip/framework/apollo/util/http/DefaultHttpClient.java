@@ -18,13 +18,8 @@ package com.ctrip.framework.apollo.util.http;
 
 import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.core.http.HttpTransport;
-import com.ctrip.framework.apollo.core.http.HttpTransportFactory;
-import com.ctrip.framework.apollo.core.http.HttpTransportProperties;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
-import com.ctrip.framework.apollo.util.ConfigUtil;
-import com.ctrip.framework.foundation.internals.ServiceBootstrap;
 import java.lang.reflect.Type;
-import java.util.Objects;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
@@ -35,18 +30,7 @@ public class DefaultHttpClient implements HttpClient {
   private final HttpTransportWrapper wrapper;
 
   public DefaultHttpClient() {
-    ConfigUtil configUtil = ApolloInjector.getInstance(ConfigUtil.class);
-
-    HttpTransportFactory transportFactory = ServiceBootstrap.loadPrimary(
-        HttpTransportFactory.class);
-
-    HttpTransportProperties properties = HttpTransportProperties.builder()
-        .defaultConnectTimeout(configUtil.getConnectTimeout())
-        .defaultReadTimeout(configUtil.getReadTimeout())
-        .build();
-
-    HttpTransport transport = transportFactory.create(properties);
-    Objects.requireNonNull(transport, "transport");
+    HttpTransport transport = ApolloInjector.getInstance(HttpTransport.class);
     this.wrapper = new HttpTransportWrapper(transport);
   }
 

@@ -20,6 +20,7 @@ import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.client.api.http.v1.meta.HttpMetaClientFactory;
 import com.ctrip.framework.apollo.client.api.http.v1.meta.HttpMetaClientProperties;
 import com.ctrip.framework.apollo.client.api.v1.meta.MetaClient;
+import com.ctrip.framework.apollo.core.http.HttpTransport;
 import com.ctrip.framework.apollo.core.spi.Ordered;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 
@@ -39,6 +40,8 @@ public class DefaultHttpMetaClientProvider implements MetaClientProvider {
 
   @Override
   public MetaClient createClient() {
+    HttpTransport httpTransport = ApolloInjector.getInstance(HttpTransport.class);
+
     ConfigUtil configUtil = ApolloInjector.getInstance(ConfigUtil.class);
 
     HttpMetaClientProperties properties = HttpMetaClientProperties.builder()
@@ -46,7 +49,7 @@ public class DefaultHttpMetaClientProvider implements MetaClientProvider {
         .discoveryReadTimeout(configUtil.getDiscoveryConnectTimeout())
         .build();
 
-    return HttpMetaClientFactory.createClient(properties);
+    return HttpMetaClientFactory.createClient(httpTransport, properties);
   }
 
   @Override

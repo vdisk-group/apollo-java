@@ -61,15 +61,15 @@ public class HttpConfigClient implements ConfigClient {
   private static final Type WATCH_NOTIFICATIONS_RESPONSE_TYPE = new TypeToken<List<ApolloConfigNotification>>() {
   }.getType();
 
-  private final HttpTransport watchTransport;
+  private final HttpTransport httpTransport;
 
-  private final HttpTransport getTransport;
+  private final HttpConfigClientProperties properties;
 
-  public HttpConfigClient(HttpTransport watchTransport, HttpTransport getTransport) {
-    Objects.requireNonNull(watchTransport, "watchTransport");
-    Objects.requireNonNull(getTransport, "getTransport");
-    this.watchTransport = watchTransport;
-    this.getTransport = getTransport;
+  public HttpConfigClient(HttpTransport httpTransport, HttpConfigClientProperties properties) {
+    Objects.requireNonNull(httpTransport, "httpTransport");
+    Objects.requireNonNull(properties, "properties");
+    this.httpTransport = httpTransport;
+    this.properties = properties;
   }
 
   @Override
@@ -101,7 +101,7 @@ public class HttpConfigClient implements ConfigClient {
       throws ConfigException {
     HttpTransportRequest httpTransportRequest = this.toWatchHttpRequest(endpoint, request);
     HttpTransportResponse<List<ApolloConfigNotification>> httpTransportResponse = this.doGet(
-        "Watch notifications", this.watchTransport,
+        "Watch notifications",
         httpTransportRequest, WATCH_NOTIFICATIONS_RESPONSE_TYPE);
 
     return this.toWatchResponse(httpTransportResponse);
@@ -112,7 +112,9 @@ public class HttpConfigClient implements ConfigClient {
     String uri = this.toWatchHttpUri(endpoint, request);
 
     HttpTransportRequest.Builder requestBuilder = HttpTransportRequest.builder()
-        .url(uri);
+        .url(uri)
+        .connectTimeout(this.properties.getWatchNotificationConnectTimeout())
+        .readTimeout(this.properties.getWatchNotificationReadTimeout());
 
     this.signWatchNotifications(uri, request, requestBuilder);
 
@@ -150,11 +152,11 @@ public class HttpConfigClient implements ConfigClient {
   }
 
   private <T> HttpTransportResponse<T> doGet(String scene,
-      HttpTransport transport, HttpTransportRequest httpTransportRequest, Type responseType)
+      HttpTransportRequest httpTransportRequest, Type responseType)
       throws ConfigNotFoundException {
     HttpTransportResponse<T> httpTransportResponse;
     try {
-      httpTransportResponse = transport.doGet(
+      httpTransportResponse = this.httpTransport.doGet(
           httpTransportRequest, responseType);
     } catch (HttpTransportStatusCodeException e) {
       if (e.getStatusCode() == 404) {
@@ -167,11 +169,11 @@ public class HttpConfigClient implements ConfigClient {
       }
     } catch (HttpTransportException e) {
       throw new ConfigException(
-          MessageFormat.format("{0} failed. Http error message: {1}",
+          MessageFormat.format("{0} failed. Http error: {1}",
               scene, e.getLocalizedMessage()), e);
     } catch (Throwable e) {
       throw new ConfigException(
-          MessageFormat.format("{0} failed. Error message: {1}",
+          MessageFormat.format("{0} failed. Error: {1}",
               scene, e.getLocalizedMessage()), e);
     }
     return httpTransportResponse;
@@ -278,7 +280,6 @@ public class HttpConfigClient implements ConfigClient {
     HttpTransportRequest httpTransportRequest = this.toGetConfigHttpRequest(endpoint, request);
 
     HttpTransportResponse<ApolloConfig> httpTransportResponse = this.doGet("Get config",
-        this.getTransport,
         httpTransportRequest,
         ApolloConfig.class);
 
@@ -299,7 +300,9 @@ public class HttpConfigClient implements ConfigClient {
     String uri = this.toGetConfigHttpUri(endpoint, request);
 
     HttpTransportRequest.Builder requestBuilder = HttpTransportRequest.builder()
-        .url(uri);
+        .url(uri)
+        .connectTimeout(this.properties.getGetConfigConnectTimeout())
+        .readTimeout(this.properties.getGetConfigReadTimeout());
 
     this.signGetConfig(uri, request, requestBuilder);
 

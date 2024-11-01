@@ -20,8 +20,10 @@ import com.ctrip.framework.apollo.config.data.extension.initialize.ApolloClientE
 import com.ctrip.framework.apollo.config.data.extension.properties.ApolloClientProperties;
 import com.ctrip.framework.apollo.config.data.extension.webclient.customizer.spi.ApolloClientWebClientCustomizerFactory;
 import com.ctrip.framework.apollo.config.data.injector.ApolloConfigDataInjectorCustomizer;
+import com.ctrip.framework.apollo.core.http.HttpTransport;
 import com.ctrip.framework.apollo.util.http.HttpClient;
 import com.ctrip.framework.foundation.internals.ServiceBootstrap;
+import com.google.gson.Gson;
 import java.util.List;
 import org.apache.commons.logging.Log;
 import org.springframework.boot.ConfigurableBootstrapContext;
@@ -64,7 +66,13 @@ public class ApolloClientLongPollingExtensionInitializer implements
         }
       }
     }
-    HttpClient httpClient = new ApolloWebClientHttpClient(webClientBuilder.build());
+    WebClient webClient = webClientBuilder.build();
+    Gson gson = new Gson();
+    HttpTransport httpTransport = new ApolloWebClientHttpTransport(webClient, gson);
+    ApolloConfigDataInjectorCustomizer.registerIfAbsent(HttpTransport.class, () -> httpTransport);
+
+    @SuppressWarnings("deprecation")
+    HttpClient httpClient = new ApolloWebClientHttpClient(webClient, gson);
     ApolloConfigDataInjectorCustomizer.registerIfAbsent(HttpClient.class, () -> httpClient);
   }
 }

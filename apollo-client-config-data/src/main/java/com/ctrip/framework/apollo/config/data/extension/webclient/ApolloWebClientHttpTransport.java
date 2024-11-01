@@ -21,11 +21,11 @@ import com.ctrip.framework.apollo.core.http.HttpTransportException;
 import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
 import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
 import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
-import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
 import com.google.common.base.Function;
 import com.google.gson.Gson;
 import java.lang.reflect.Type;
 import java.net.URI;
+import java.text.MessageFormat;
 import java.util.Map;
 import java.util.Objects;
 import org.springframework.http.HttpStatus;
@@ -84,6 +84,21 @@ public class ApolloWebClientHttpTransport implements HttpTransport {
   private <T> HttpTransportResponse<T> doGetWithSerializeFunction(
       HttpTransportRequest httpTransportRequest,
       Function<String, T> serializeFunction) {
+    try {
+      return this.doGetWithSerializeFunctionInternal(httpTransportRequest, serializeFunction);
+    } catch (HttpTransportStatusCodeException e) {
+      throw e;
+    } catch (Throwable e) {
+      String errorMessage = MessageFormat.format("Could not complete get operation, {0}: {1}",
+          e.getClass().getSimpleName(), e.getLocalizedMessage());
+      throw new HttpTransportException(errorMessage, e);
+    }
+  }
+
+
+  private <T> HttpTransportResponse<T> doGetWithSerializeFunctionInternal(
+      HttpTransportRequest httpTransportRequest,
+      Function<String, T> serializeFunction) {
     WebClient.RequestHeadersSpec<?> requestHeadersSpec = this.webClient.get()
         .uri(URI.create(httpTransportRequest.getUrl()));
     if (!CollectionUtils.isEmpty(httpTransportRequest.getHeaders())) {
@@ -100,8 +115,9 @@ public class ApolloWebClientHttpTransport implements HttpTransport {
       if (HttpStatus.NOT_MODIFIED.equals(clientResponse.statusCode())) {
         return Mono.just(new HttpTransportResponse<T>(HttpStatus.NOT_MODIFIED.value(), null));
       }
-      return Mono.error(new ApolloConfigStatusCodeException(clientResponse.rawStatusCode(),
-          String.format("Get operation failed for %s", httpTransportRequest.getUrl())));
+      return Mono.error(new HttpTransportStatusCodeException(
+          String.format("Get operation failed for %s", httpTransportRequest.getUrl()),
+          clientResponse.rawStatusCode()));
     }).block();
   }
 

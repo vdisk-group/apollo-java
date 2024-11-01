@@ -17,6 +17,7 @@
 package com.ctrip.framework.apollo.util.http;
 
 import com.ctrip.framework.apollo.core.http.HttpTransport;
+import com.ctrip.framework.apollo.core.http.HttpTransportException;
 import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
 import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
 import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
@@ -24,6 +25,7 @@ import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
 import com.google.common.base.Supplier;
 import java.lang.reflect.Type;
+import java.text.MessageFormat;
 import java.util.Objects;
 
 @Deprecated
@@ -64,8 +66,12 @@ public class HttpTransportWrapper {
       transportResponse = action.get();
     } catch (HttpTransportStatusCodeException e) {
       throw new ApolloConfigStatusCodeException(e.getStatusCode(), e.getMessage(), e);
+    } catch (HttpTransportException e) {
+      throw new ApolloConfigException(e.getLocalizedMessage(), e);
     } catch (Throwable e) {
-      throw new ApolloConfigException("Could not complete get operation", e);
+      String errorMessage = MessageFormat.format("Could not complete get operation, {0}: {1}",
+          e.getClass().getSimpleName(), e.getLocalizedMessage());
+      throw new ApolloConfigException(errorMessage, e);
     }
     return new HttpResponse<>(transportResponse.getStatusCode(), transportResponse.getBody());
   }
