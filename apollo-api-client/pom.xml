@@ -32,16 +32,6 @@
   </properties>
   <dependencies>
     <!-- apollo -->
-    <dependency>
-      <groupId>com.ctrip.framework.apollo</groupId>
-      <artifactId>apollo-core</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>*</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
     <!-- end of apollo -->
   </dependencies>
 </project>
