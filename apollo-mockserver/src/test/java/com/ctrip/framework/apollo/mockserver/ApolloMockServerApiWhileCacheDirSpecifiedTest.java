@@ -16,6 +16,10 @@
  */
 package com.ctrip.framework.apollo.mockserver;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
+
 import com.ctrip.framework.apollo.Config;
 import com.ctrip.framework.apollo.ConfigService;
 import com.ctrip.framework.apollo.core.ApolloClientSystemConsts;
@@ -24,18 +28,13 @@ import com.ctrip.framework.apollo.internals.LocalFileConfigRepository;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.springframework.test.util.ReflectionTestUtils;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
-
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 public class ApolloMockServerApiWhileCacheDirSpecifiedTest {
 
@@ -54,7 +53,7 @@ public class ApolloMockServerApiWhileCacheDirSpecifiedTest {
     ConfigUtil configUtil = spy(new ConfigUtil());
     doReturn(someAppId).when(configUtil).getAppId();
     String defaultLocalCacheDir = ReflectionTestUtils.invokeMethod(configUtil, "getDefaultLocalCacheDir", new Object[]{});
-    assertEquals(someCacheDir + "/" + someAppId, defaultLocalCacheDir);
+    assertEquals(someCacheDir + File.separator + someAppId, defaultLocalCacheDir);
 
     // LocalFileConfigRepository.CONFIG_DIR
     LocalFileConfigRepository localFileConfigRepository = new LocalFileConfigRepository(someNamespace);
