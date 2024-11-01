@@ -30,6 +30,7 @@ import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
 import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
 import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
 import com.google.common.base.Strings;
+import com.google.common.base.Supplier;
 import com.google.common.collect.Maps;
 import com.google.common.reflect.TypeToken;
 import java.lang.reflect.Type;
@@ -77,13 +78,11 @@ public class HttpMetaClient implements MetaClient {
   }
 
   @Override
-  public List<ConfigServiceInstance> getServices(Endpoint endpoint,
-      DiscoveryRequest request) {
+  public List<ConfigServiceInstance> getServices(Endpoint endpoint, DiscoveryRequest request) {
     HttpTransportRequest httpTransportRequest = this.toGetServicesHttpRequest(endpoint, request);
-    HttpTransportResponse<List<ServiceDTO>> httpTransportResponse = this.doGet(
+    HttpTransportResponse<List<ServiceDTO>> httpTransportResponse = this.doGetInternal(
         "Get config services",
-        httpTransportRequest,
-        GET_SERVICES_RESPONSE_TYPE);
+        () -> this.httpTransport.doGet(httpTransportRequest, GET_SERVICES_RESPONSE_TYPE));
     List<ServiceDTO> serviceDTOList = httpTransportResponse.getBody();
     if (InternalCollectionUtil.isEmpty(serviceDTOList)) {
       return Collections.emptyList();
@@ -91,10 +90,8 @@ public class HttpMetaClient implements MetaClient {
     List<ConfigServiceInstance> configServiceInstanceList = new ArrayList<>(serviceDTOList.size());
     for (ServiceDTO serviceDTO : serviceDTOList) {
       ConfigServiceInstance configServiceInstance = ConfigServiceInstance.builder()
-          .serviceId(serviceDTO.getAppName())
-          .instanceId(serviceDTO.getInstanceId())
-          .address(serviceDTO.getHomepageUrl())
-          .build();
+          .serviceId(serviceDTO.getAppName()).instanceId(serviceDTO.getInstanceId())
+          .address(serviceDTO.getHomepageUrl()).build();
       configServiceInstanceList.add(configServiceInstance);
     }
     return Collections.unmodifiableList(configServiceInstanceList);
@@ -103,32 +100,26 @@ public class HttpMetaClient implements MetaClient {
   private HttpTransportRequest toGetServicesHttpRequest(Endpoint endpoint,
       DiscoveryRequest request) {
     String uri = this.toGetServicesUri(endpoint, request);
-    return HttpTransportRequest.builder()
-        .url(uri)
+    return HttpTransportRequest.builder().url(uri)
         .connectTimeout(this.properties.getDiscoveryConnectTimeout())
-        .readTimeout(this.properties.getDiscoveryReadTimeout())
-        .build();
+        .readTimeout(this.properties.getDiscoveryReadTimeout()).build();
   }
 
-  private <T> HttpTransportResponse<T> doGet(String scene,
-      HttpTransportRequest httpTransportRequest, Type responseType) {
+  private <T> HttpTransportResponse<T> doGetInternal(String scene,
+      Supplier<HttpTransportResponse<T>> action) {
     HttpTransportResponse<T> httpTransportResponse;
     try {
-      httpTransportResponse = this.httpTransport.doGet(
-          httpTransportRequest, responseType);
+      httpTransportResponse = action.get();
     } catch (HttpTransportStatusCodeException e) {
       throw new MetaException(
-          MessageFormat.format("{0} failed. Http status code: {1}",
-              scene, e.getStatusCode()),
-          e);
+          MessageFormat.format("{0} failed. Http status code: {1}", scene, e.getStatusCode()), e);
     } catch (HttpTransportException e) {
-      throw new MetaException(
-          MessageFormat.format("{0} failed. Http error message: {1}",
-              scene, e.getLocalizedMessage()), e);
+      throw new MetaException(MessageFormat.format("{0} failed. Http error: {1}", scene,
+          e.getLocalizedMessage()), e);
     } catch (Throwable e) {
       throw new MetaException(
-          MessageFormat.format("{0} failed. Error message: {1}",
-              scene, e.getLocalizedMessage()), e);
+          MessageFormat.format("{0} failed. Error: {1}", scene, e.getLocalizedMessage()),
+          e);
     }
     return httpTransportResponse;
   }

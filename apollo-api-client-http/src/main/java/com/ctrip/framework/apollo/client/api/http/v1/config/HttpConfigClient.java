@@ -42,6 +42,7 @@ import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
 import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
 import com.ctrip.framework.apollo.core.signature.Signature;
 import com.ctrip.framework.apollo.core.utils.StringUtils;
+import com.google.common.base.Supplier;
 import com.google.common.collect.Maps;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
@@ -100,9 +101,9 @@ public class HttpConfigClient implements ConfigClient {
   public WatchNotificationsResponse watch(Endpoint endpoint, WatchNotificationsRequest request)
       throws ConfigException {
     HttpTransportRequest httpTransportRequest = this.toWatchHttpRequest(endpoint, request);
-    HttpTransportResponse<List<ApolloConfigNotification>> httpTransportResponse = this.doGet(
+    HttpTransportResponse<List<ApolloConfigNotification>> httpTransportResponse = this.doGetInternal(
         "Watch notifications",
-        httpTransportRequest, WATCH_NOTIFICATIONS_RESPONSE_TYPE);
+        () -> this.httpTransport.doGet(httpTransportRequest, WATCH_NOTIFICATIONS_RESPONSE_TYPE));
 
     return this.toWatchResponse(httpTransportResponse);
   }
@@ -151,13 +152,12 @@ public class HttpConfigClient implements ConfigClient {
     }
   }
 
-  private <T> HttpTransportResponse<T> doGet(String scene,
-      HttpTransportRequest httpTransportRequest, Type responseType)
+  private <T> HttpTransportResponse<T> doGetInternal(String scene,
+      Supplier<HttpTransportResponse<T>> action)
       throws ConfigNotFoundException {
     HttpTransportResponse<T> httpTransportResponse;
     try {
-      httpTransportResponse = this.httpTransport.doGet(
-          httpTransportRequest, responseType);
+      httpTransportResponse = action.get();
     } catch (HttpTransportStatusCodeException e) {
       if (e.getStatusCode() == 404) {
         throw new ConfigNotFoundException();
@@ -279,9 +279,9 @@ public class HttpConfigClient implements ConfigClient {
 
     HttpTransportRequest httpTransportRequest = this.toGetConfigHttpRequest(endpoint, request);
 
-    HttpTransportResponse<ApolloConfig> httpTransportResponse = this.doGet("Get config",
-        httpTransportRequest,
-        ApolloConfig.class);
+    HttpTransportResponse<ApolloConfig> httpTransportResponse = this.doGetInternal(
+        "Get config",
+        () -> this.httpTransport.doGet(httpTransportRequest, ApolloConfig.class));
 
     ApolloConfig apolloConfig = httpTransportResponse.getBody();
     if (httpTransportResponse.getStatusCode() == 304) {
