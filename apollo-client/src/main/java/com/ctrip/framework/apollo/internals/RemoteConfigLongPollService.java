@@ -42,6 +42,7 @@ import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.apollo.util.ExceptionUtil;
 import com.ctrip.framework.foundation.internals.ServiceBootstrap;
 import com.google.common.base.Joiner;
+import com.google.common.base.Joiner.MapJoiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
@@ -74,7 +75,7 @@ import org.slf4j.LoggerFactory;
 public class RemoteConfigLongPollService {
   private static final Logger logger = LoggerFactory.getLogger(RemoteConfigLongPollService.class);
   private static final Joiner STRING_JOINER = Joiner.on(ConfigConsts.CLUSTER_NAMESPACE_SEPARATOR);
-  private static final Joiner.MapJoiner MAP_JOINER = Joiner.on("&").withKeyValueSeparator("=");
+  private static final MapJoiner MAP_JOINER = Joiner.on("&").withKeyValueSeparator("=");
   private static final Escaper queryParamEscaper = UrlEscapers.urlFormParameterEscaper();
   private static final long INIT_NOTIFICATION_ID = ConfigConsts.NOTIFICATION_ID_PLACEHOLDER;
   //90 seconds, should be longer than server side's long polling timeout, which is now 60 seconds
@@ -353,8 +354,13 @@ public class RemoteConfigLongPollService {
 
   private ApolloNotificationMessages toApolloNotificationMessages(
       NotificationMessages notificationMessages) {
+    Map<String, Long> details =
+        notificationMessages != null ? notificationMessages.getDetails() : null;
+    if (details == null) {
+      return null;
+    }
     ApolloNotificationMessages messages = new ApolloNotificationMessages();
-    messages.setDetails(new TreeMap<>(notificationMessages.getDetails()));
+    messages.setDetails(new TreeMap<>(details));
     return messages;
   }
 
@@ -384,7 +390,7 @@ public class RemoteConfigLongPollService {
 
   String assembleNotifications(Map<String, Long> notificationsMap) {
     List<ApolloConfigNotification> notifications = Lists.newArrayList();
-    for (Map.Entry<String, Long> entry : notificationsMap.entrySet()) {
+    for (Entry<String, Long> entry : notificationsMap.entrySet()) {
       ApolloConfigNotification notification = new ApolloConfigNotification(entry.getKey(), entry.getValue());
       notifications.add(notification);
     }
