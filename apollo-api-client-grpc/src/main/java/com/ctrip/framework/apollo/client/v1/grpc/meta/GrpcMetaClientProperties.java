@@ -14,12 +14,12 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.api.http.v1.meta;
+package com.ctrip.framework.apollo.client.v1.grpc.meta;
 
 import java.util.Objects;
 import javax.annotation.Nonnull;
 
-public class HttpMetaClientProperties {
+public class GrpcMetaClientProperties {
 
   @Nonnull
   private final Integer discoveryConnectTimeout;
@@ -27,8 +27,8 @@ public class HttpMetaClientProperties {
   @Nonnull
   private final Integer discoveryReadTimeout;
 
-  HttpMetaClientProperties(Builder builder) {
-    HttpMetaClientProperties.validateBuilder(builder);
+  GrpcMetaClientProperties(Builder builder) {
+    GrpcMetaClientProperties.validateBuilder(builder);
     this.discoveryConnectTimeout = builder.discoveryConnectTimeout;
     this.discoveryReadTimeout = builder.discoveryReadTimeout;
   }
@@ -77,8 +77,8 @@ public class HttpMetaClientProperties {
       return this;
     }
 
-    public HttpMetaClientProperties build() {
-      return new HttpMetaClientProperties(this);
+    public GrpcMetaClientProperties build() {
+      return new GrpcMetaClientProperties(this);
     }
   }
 }

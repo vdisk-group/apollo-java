@@ -1,3 +1,4 @@
+
 /*
  * Copyright 2022 Apollo Authors
  *
@@ -14,12 +15,12 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.api.http.v1.config;
+package com.ctrip.framework.apollo.client.v1.grpc.config;
 
 import java.util.Objects;
 import javax.annotation.Nonnull;
 
-public class HttpConfigClientProperties {
+public class GrpcConfigClientProperties {
 
   @Nonnull
   private final Integer watchNotificationConnectTimeout;
@@ -33,8 +34,8 @@ public class HttpConfigClientProperties {
   @Nonnull
   private final Integer getConfigReadTimeout;
 
-  HttpConfigClientProperties(Builder builder) {
-    HttpConfigClientProperties.validateBuilder(builder);
+  GrpcConfigClientProperties(Builder builder) {
+    GrpcConfigClientProperties.validateBuilder(builder);
     this.watchNotificationConnectTimeout = builder.watchNotificationConnectTimeout;
     this.watchNotificationReadTimeout = builder.watchNotificationReadTimeout;
     this.getConfigConnectTimeout = builder.getConfigConnectTimeout;
@@ -112,8 +113,8 @@ public class HttpConfigClientProperties {
       return this;
     }
 
-    public HttpConfigClientProperties build() {
-      return new HttpConfigClientProperties(this);
+    public GrpcConfigClientProperties build() {
+      return new GrpcConfigClientProperties(this);
     }
   }
 }

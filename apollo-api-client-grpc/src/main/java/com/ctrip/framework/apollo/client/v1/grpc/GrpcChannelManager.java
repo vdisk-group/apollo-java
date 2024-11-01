@@ -14,18 +14,18 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.api.http.v1.util;
+package com.ctrip.framework.apollo.client.v1.grpc;
 
-import java.util.Collection;
-import java.util.Map;
+import com.ctrip.framework.apollo.client.v1.api.Endpoint;
+import io.grpc.ManagedChannel;
 
-public class InternalCollectionUtil {
+public interface GrpcChannelManager {
 
-  public static boolean isEmpty(Collection<?> collection) {
-    return collection == null || collection.isEmpty();
-  }
-
-  public static boolean isEmpty(Map<?, ?> map) {
-    return map == null || map.isEmpty();
-  }
+  /**
+   * Get a gRPC channel for the given endpoint
+   *
+   * @param endpoint the endpoint
+   * @return a gRPC channel
+   */
+  ManagedChannel getChannel(Endpoint endpoint);
 }

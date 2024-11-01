@@ -14,20 +14,20 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.api.http.v1.meta;
+package com.ctrip.framework.apollo.client.v1.grpc.config;
 
-import com.ctrip.framework.apollo.client.api.v1.meta.MetaClient;
-import com.ctrip.framework.apollo.core.http.HttpTransport;
+import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
+import com.ctrip.framework.apollo.client.v1.grpc.GrpcChannelManager;
 
-public class HttpMetaClientFactory {
+public class GrpcConfigClientFactory {
 
-  private HttpMetaClientFactory() {
+  private GrpcConfigClientFactory() {
     throw new UnsupportedOperationException();
   }
 
-  public static MetaClient createClient(HttpTransport httpTransport,
-      HttpMetaClientProperties properties) {
+  public static ConfigClient createClient(GrpcChannelManager channelManager,
+      GrpcConfigClientProperties properties) {
 
-    return new HttpMetaClient(httpTransport, properties);
+    return new GrpcConfigClient(channelManager, properties);
   }
 }
