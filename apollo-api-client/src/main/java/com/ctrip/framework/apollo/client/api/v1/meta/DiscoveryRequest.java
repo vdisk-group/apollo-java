@@ -19,13 +19,13 @@ package com.ctrip.framework.apollo.client.api.v1.meta;
 
 import java.util.StringJoiner;
 
-public class GetServicesRequest {
+public class DiscoveryRequest {
 
   private final String appId;
 
   private final String clientIp;
 
-  GetServicesRequest(Builder builder) {
+  DiscoveryRequest(Builder builder) {
     this.appId = builder.appId;
     this.clientIp = builder.clientIp;
   }
@@ -51,7 +51,7 @@ public class GetServicesRequest {
 
   @Override
   public String toString() {
-    return new StringJoiner(", ", GetServicesRequest.class.getSimpleName() + "[", "]")
+    return new StringJoiner(", ", DiscoveryRequest.class.getSimpleName() + "[", "]")
         // fields
         .add("appId='" + this.appId + "'")
         .add("clientIp='" + this.clientIp + "'")
@@ -76,8 +76,8 @@ public class GetServicesRequest {
       return this;
     }
 
-    public GetServicesRequest build() {
-      return new GetServicesRequest(this);
+    public DiscoveryRequest build() {
+      return new DiscoveryRequest(this);
     }
   }
 }

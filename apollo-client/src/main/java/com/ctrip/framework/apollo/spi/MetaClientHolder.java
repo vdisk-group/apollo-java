@@ -16,29 +16,14 @@
  */
 package com.ctrip.framework.apollo.spi;
 
-import com.ctrip.framework.apollo.client.api.v1.config.ConfigClient;
-import com.ctrip.framework.apollo.core.spi.Ordered;
+import com.ctrip.framework.apollo.client.api.v1.meta.MetaClient;
 
-public interface ConfigClientProvider extends Ordered {
-
-  /**
-   * get the type of client created by the Provider
-   *
-   * @return the type of client
-   */
-  String getClientType();
+public interface MetaClientHolder {
 
   /**
-   * get the name of Provider
-   *
-   * @return name of Provider
-   */
-  String getName();
-
-  /**
-   * get an instance of ConfigClient
+   * get an instance of ConfigClient created by Provider {@link MetaClientProvider#createClient()}
    *
    * @return ConfigClient
    */
-  ConfigClient createClient();
+  MetaClient getMetaClient();
 }

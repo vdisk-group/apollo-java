@@ -35,8 +35,8 @@ public class HttpMetaClientFactory {
         HttpTransportFactory.class);
 
     HttpTransportProperties getServicesProperties = HttpTransportProperties.builder()
-        .defaultConnectTimeout(properties.getGetServicesConnectTimeout())
-        .defaultReadTimeout(properties.getGetServicesReadTimeout())
+        .defaultConnectTimeout(properties.getDiscoveryConnectTimeout())
+        .defaultReadTimeout(properties.getDiscoveryReadTimeout())
         .build();
 
     HttpTransport getServicesTransport = transportFactory.create(getServicesProperties);

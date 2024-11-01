@@ -16,44 +16,47 @@
  */
 package com.ctrip.framework.apollo.internals;
 
+import com.ctrip.framework.apollo.build.ApolloInjector;
+import com.ctrip.framework.apollo.client.api.v1.Endpoint;
+import com.ctrip.framework.apollo.client.api.v1.meta.ConfigServiceInstance;
+import com.ctrip.framework.apollo.client.api.v1.meta.DiscoveryRequest;
+import com.ctrip.framework.apollo.client.api.v1.meta.MetaClient;
 import com.ctrip.framework.apollo.core.ApolloClientSystemConsts;
 import com.ctrip.framework.apollo.core.ServiceNameConsts;
-import com.ctrip.framework.apollo.core.utils.DeferredLoggerFactory;
-import com.ctrip.framework.apollo.core.utils.DeprecatedPropertyNotifyUtil;
-import com.ctrip.framework.foundation.Foundation;
-import com.google.common.util.concurrent.RateLimiter;
-import java.lang.reflect.Type;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-
-import org.slf4j.Logger;
-
-import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.core.dto.ServiceDTO;
 import com.ctrip.framework.apollo.core.utils.ApolloThreadFactory;
+import com.ctrip.framework.apollo.core.utils.DeferredLoggerFactory;
+import com.ctrip.framework.apollo.core.utils.DeprecatedPropertyNotifyUtil;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
+import com.ctrip.framework.apollo.spi.MetaClientHolder;
 import com.ctrip.framework.apollo.tracer.Tracer;
 import com.ctrip.framework.apollo.tracer.spi.Transaction;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.apollo.util.ExceptionUtil;
-import com.ctrip.framework.apollo.util.http.HttpRequest;
-import com.ctrip.framework.apollo.util.http.HttpResponse;
 import com.ctrip.framework.apollo.util.http.HttpClient;
+import com.ctrip.framework.foundation.Foundation;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.escape.Escaper;
 import com.google.common.net.UrlEscapers;
+import com.google.common.util.concurrent.RateLimiter;
 import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import org.slf4j.Logger;
 
 public class ConfigServiceLocator {
   private static final Logger logger = DeferredLoggerFactory.getLogger(ConfigServiceLocator.class);
   private HttpClient m_httpClient;
+  private final MetaClientHolder m_metaClientHolder;
   private ConfigUtil m_configUtil;
   private AtomicReference<List<ServiceDTO>> m_configServices;
   private Type m_responseType;
@@ -77,6 +80,7 @@ public class ConfigServiceLocator {
     m_responseType = new TypeToken<List<ServiceDTO>>() {
     }.getType();
     m_httpClient = ApolloInjector.getInstance(HttpClient.class);
+    m_metaClientHolder = ApolloInjector.getInstance(MetaClientHolder.class);
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
     this.m_executorService = Executors.newScheduledThreadPool(1,
         ApolloThreadFactory.create("ConfigServiceLocator", true));
@@ -234,12 +238,15 @@ public class ConfigServiceLocator {
       // quick return without wait
       return;
     }
-    String url = assembleMetaServiceUrl();
 
-    HttpRequest request = new HttpRequest(url);
+    String domainName = m_configUtil.getMetaServerDomainName();
+    Endpoint endpoint = Endpoint.builder()
+        .address(domainName)
+        .build();
+    DiscoveryRequest discoveryRequest = assembleMetaServiceRequest();
 
-    request.setConnectTimeout(m_configUtil.getDiscoveryConnectTimeout());
-    request.setReadTimeout(m_configUtil.getDiscoveryReadTimeout());
+    MetaClient metaClient = m_metaClientHolder.getMetaClient();
+    String url = metaClient.traceGetServices(endpoint, discoveryRequest);
 
     int maxRetries = 2;
     Throwable exception = null;
@@ -248,9 +255,10 @@ public class ConfigServiceLocator {
       Transaction transaction = Tracer.newTransaction("Apollo.MetaService", "getConfigService");
       transaction.addData("Url", url);
       try {
-        HttpResponse<List<ServiceDTO>> response = m_httpClient.doGet(request, m_responseType);
+        List<ConfigServiceInstance> serviceInstances = metaClient.getServices(endpoint,
+            discoveryRequest);
         transaction.setStatus(Transaction.SUCCESS);
-        List<ServiceDTO> services = response.getBody();
+        List<ServiceDTO> services = this.toServiceDTOList(serviceInstances);
         if (services == null || services.isEmpty()) {
           logConfigService("Empty response!");
           continue;
@@ -281,12 +289,36 @@ public class ConfigServiceLocator {
     logConfigServices(services);
   }
 
-  private String assembleMetaServiceUrl() {
+  DiscoveryRequest assembleMetaServiceRequest() {
+    String appId = m_configUtil.getAppId();
+    String localIp = m_configUtil.getLocalIp();
+    return DiscoveryRequest.builder()
+        .appId(appId)
+        .clientIp(localIp)
+        .build();
+  }
+
+  private List<ServiceDTO> toServiceDTOList(List<ConfigServiceInstance> serviceInstances) {
+    if (serviceInstances == null || serviceInstances.isEmpty()) {
+      return null;
+    }
+    List<ServiceDTO> services = new ArrayList<>(serviceInstances.size());
+    for (ConfigServiceInstance serviceInstance : serviceInstances) {
+      ServiceDTO serviceDTO = new ServiceDTO();
+      serviceDTO.setAppName(serviceInstance.getServiceId());
+      serviceDTO.setInstanceId(serviceInstance.getInstanceId());
+      serviceDTO.setHomepageUrl(serviceInstance.getAddress());
+      services.add(serviceDTO);
+    }
+    return services;
+  }
+
+  String assembleMetaServiceUrl() {
     String domainName = m_configUtil.getMetaServerDomainName();
     String appId = m_configUtil.getAppId();
     String localIp = m_configUtil.getLocalIp();
 
-    Map<String, String> queryParams = Maps.newHashMap();
+    Map<String, String> queryParams = Maps.newLinkedHashMap();
     queryParams.put("appId", queryParamEscaper.escape(appId));
     if (!Strings.isNullOrEmpty(localIp)) {
       queryParams.put("ip", queryParamEscaper.escape(localIp));

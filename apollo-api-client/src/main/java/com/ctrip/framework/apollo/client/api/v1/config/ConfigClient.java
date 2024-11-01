@@ -21,9 +21,19 @@ import com.ctrip.framework.apollo.client.api.v1.Endpoint;
 public interface ConfigClient {
 
   /**
+   * trace url for watch notification changes
+   *
+   * @param endpoint server address
+   * @param request  interested notifications
+   * @return trace url
+   */
+  String traceWatch(Endpoint endpoint, WatchNotificationsRequest request);
+
+  /**
    * watch notification changes
    *
-   * @param request interested notifications
+   * @param endpoint server address
+   * @param request  interested notifications
    * @return changed notifications
    * @throws ConfigException watch failed
    */
@@ -31,13 +41,23 @@ public interface ConfigClient {
       throws ConfigException;
 
   /**
+   * trace url for get config
+   *
+   * @param endpoint server address
+   * @param request  config queries
+   * @return trace url
+   */
+  String traceGetConfig(Endpoint endpoint, GetConfigRequest request);
+
+  /**
    * get latest config
    *
-   * @param request config queries
+   * @param endpoint server address
+   * @param request  config queries
    * @return latest config
    * @throws ConfigException         get failed
    * @throws ConfigNotFoundException config not found
    */
-  GetConfigResponse get(Endpoint endpoint, GetConfigRequest request)
+  GetConfigResponse getConfig(Endpoint endpoint, GetConfigRequest request)
       throws ConfigException, ConfigNotFoundException;
 }

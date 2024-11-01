@@ -22,20 +22,20 @@ import javax.annotation.Nonnull;
 public class HttpMetaClientProperties {
 
   @Nonnull
-  private final Integer getServicesConnectTimeout;
+  private final Integer discoveryConnectTimeout;
 
   @Nonnull
-  private final Integer getServicesReadTimeout;
+  private final Integer discoveryReadTimeout;
 
   HttpMetaClientProperties(Builder builder) {
     HttpMetaClientProperties.validateBuilder(builder);
-    this.getServicesConnectTimeout = builder.getServicesConnectTimeout;
-    this.getServicesReadTimeout = builder.getServicesReadTimeout;
+    this.discoveryConnectTimeout = builder.discoveryConnectTimeout;
+    this.discoveryReadTimeout = builder.discoveryReadTimeout;
   }
 
   private static void validateBuilder(Builder builder) {
-    Objects.requireNonNull(builder.getServicesConnectTimeout, "getServicesConnectTimeout");
-    Objects.requireNonNull(builder.getServicesReadTimeout, "getServicesReadTimeout");
+    Objects.requireNonNull(builder.discoveryConnectTimeout, "discoveryConnectTimeout");
+    Objects.requireNonNull(builder.discoveryReadTimeout, "discoveryReadTimeout");
   }
 
   public static Builder builder() {
@@ -44,36 +44,36 @@ public class HttpMetaClientProperties {
 
   public Builder toBuilder() {
     Builder builder = new Builder();
-    builder.getServicesConnectTimeout = this.getServicesConnectTimeout;
-    builder.getServicesReadTimeout = this.getServicesReadTimeout;
+    builder.discoveryConnectTimeout = this.discoveryConnectTimeout;
+    builder.discoveryReadTimeout = this.discoveryReadTimeout;
     return builder;
   }
 
   @Nonnull
-  public Integer getGetServicesConnectTimeout() {
-    return this.getServicesConnectTimeout;
+  public Integer getDiscoveryConnectTimeout() {
+    return this.discoveryConnectTimeout;
   }
 
   @Nonnull
-  public Integer getGetServicesReadTimeout() {
-    return this.getServicesReadTimeout;
+  public Integer getDiscoveryReadTimeout() {
+    return this.discoveryReadTimeout;
   }
 
   public static final class Builder {
 
-    private Integer getServicesConnectTimeout;
-    private Integer getServicesReadTimeout;
+    private Integer discoveryConnectTimeout;
+    private Integer discoveryReadTimeout;
 
     Builder() {
     }
 
-    public Builder getServicesConnectTimeout(Integer getServicesConnectTimeout) {
-      this.getServicesConnectTimeout = getServicesConnectTimeout;
+    public Builder discoveryConnectTimeout(Integer discoveryConnectTimeout) {
+      this.discoveryConnectTimeout = discoveryConnectTimeout;
       return this;
     }
 
-    public Builder getServicesReadTimeout(Integer getServicesReadTimeout) {
-      this.getServicesReadTimeout = getServicesReadTimeout;
+    public Builder discoveryReadTimeout(Integer discoveryReadTimeout) {
+      this.discoveryReadTimeout = discoveryReadTimeout;
       return this;
     }
 

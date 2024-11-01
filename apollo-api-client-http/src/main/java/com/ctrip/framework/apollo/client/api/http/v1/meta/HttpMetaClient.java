@@ -20,7 +20,7 @@ import com.ctrip.framework.apollo.client.api.http.v1.util.InternalCollectionUtil
 import com.ctrip.framework.apollo.client.api.http.v1.util.InternalHttpUtil;
 import com.ctrip.framework.apollo.client.api.v1.Endpoint;
 import com.ctrip.framework.apollo.client.api.v1.meta.ConfigServiceInstance;
-import com.ctrip.framework.apollo.client.api.v1.meta.GetServicesRequest;
+import com.ctrip.framework.apollo.client.api.v1.meta.DiscoveryRequest;
 import com.ctrip.framework.apollo.client.api.v1.meta.MetaClient;
 import com.ctrip.framework.apollo.client.api.v1.meta.MetaException;
 import com.ctrip.framework.apollo.core.dto.ServiceDTO;
@@ -53,8 +53,28 @@ public class HttpMetaClient implements MetaClient {
   }
 
   @Override
+  public String traceGetServices(Endpoint endpoint, DiscoveryRequest request) {
+    return this.toGetServicesUri(endpoint, request);
+  }
+
+  private String toGetServicesUri(Endpoint endpoint, DiscoveryRequest request) {
+    Map<String, String> queryParams = Maps.newHashMap();
+    queryParams.put("appId", request.getAppId());
+    String clientIp = request.getClientIp();
+    if (!Strings.isNullOrEmpty(clientIp)) {
+      queryParams.put("ip", clientIp);
+    }
+
+    String actualAddress = InternalHttpUtil.getActualAddress(endpoint);
+
+    String query = InternalHttpUtil.toQueryString(queryParams);
+
+    return MessageFormat.format("{0}/services/config{1}", actualAddress, query);
+  }
+
+  @Override
   public List<ConfigServiceInstance> getServices(Endpoint endpoint,
-      GetServicesRequest request) {
+      DiscoveryRequest request) {
     HttpTransportRequest httpTransportRequest = this.toGetServicesHttpRequest(endpoint, request);
     HttpTransportResponse<List<ServiceDTO>> httpTransportResponse = this.doGet(
         "Get config services",
@@ -77,19 +97,8 @@ public class HttpMetaClient implements MetaClient {
   }
 
   private HttpTransportRequest toGetServicesHttpRequest(Endpoint endpoint,
-      GetServicesRequest request) {
-    Map<String, String> queryParams = Maps.newHashMap();
-    queryParams.put("appId", request.getAppId());
-    String clientIp = request.getClientIp();
-    if (!Strings.isNullOrEmpty(clientIp)) {
-      queryParams.put("ip", clientIp);
-    }
-
-    String actualAddress = InternalHttpUtil.getActualAddress(endpoint);
-
-    String query = InternalHttpUtil.toQueryString(queryParams);
-
-    String uri = MessageFormat.format("{0}/services/config{1}", actualAddress, query);
+      DiscoveryRequest request) {
+    String uri = this.toGetServicesUri(endpoint, request);
     return HttpTransportRequest.builder()
         .url(uri)
         .build();

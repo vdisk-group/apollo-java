@@ -20,27 +20,20 @@ import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.core.http.HttpTransport;
 import com.ctrip.framework.apollo.core.http.HttpTransportFactory;
 import com.ctrip.framework.apollo.core.http.HttpTransportProperties;
-import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
-import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
-import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
-import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.foundation.internals.ServiceBootstrap;
-import com.google.common.base.Supplier;
 import java.lang.reflect.Type;
 import java.util.Objects;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
+@Deprecated
 public class DefaultHttpClient implements HttpClient {
 
-  private final HttpTransport transport;
+  private final HttpTransportWrapper wrapper;
 
-  /**
-   * Constructor.
-   */
   public DefaultHttpClient() {
     ConfigUtil configUtil = ApolloInjector.getInstance(ConfigUtil.class);
 
@@ -54,56 +47,18 @@ public class DefaultHttpClient implements HttpClient {
 
     HttpTransport transport = transportFactory.create(properties);
     Objects.requireNonNull(transport, "transport");
-    this.transport = transport;
+    this.wrapper = new HttpTransportWrapper(transport);
   }
 
-  /**
-   * Do get operation for the http request.
-   *
-   * @param httpRequest  the request
-   * @param responseType the response type
-   * @return the response
-   * @throws ApolloConfigException if any error happened or response code is neither 200 nor 304
-   */
   @Override
-  public <T> HttpResponse<T> doGet(HttpRequest httpRequest, final Class<T> responseType) {
-    HttpTransportRequest transportRequest = this.toTransportRequest(httpRequest);
-    return this.doGetInternal(() -> this.transport.doGet(transportRequest, responseType));
+  public <T> HttpResponse<T> doGet(HttpRequest httpRequest, Class<T> responseType)
+      throws ApolloConfigException {
+    return this.wrapper.doGet(httpRequest, responseType);
   }
 
-  private HttpTransportRequest toTransportRequest(HttpRequest httpRequest) {
-    return HttpTransportRequest.builder()
-        .url(httpRequest.getUrl())
-        .headers(httpRequest.getHeaders())
-        .connectTimeout(httpRequest.getConnectTimeout())
-        .readTimeout(httpRequest.getReadTimeout())
-        .build();
-  }
-
-  private <T> HttpResponse<T> doGetInternal(Supplier<HttpTransportResponse<T>> action) {
-    HttpTransportResponse<T> transportResponse;
-    try {
-      transportResponse = action.get();
-    } catch (HttpTransportStatusCodeException e) {
-      throw new ApolloConfigStatusCodeException(e.getStatusCode(), e.getMessage(), e);
-    } catch (Throwable e) {
-      throw new ApolloConfigException("Could not complete get operation", e);
-    }
-    return new HttpResponse<>(transportResponse.getStatusCode(), transportResponse.getBody());
-  }
-
-  /**
-   * Do get operation for the http request.
-   *
-   * @param httpRequest  the request
-   * @param responseType the response type
-   * @return the response
-   * @throws ApolloConfigException if any error happened or response code is neither 200 nor 304
-   */
   @Override
-  public <T> HttpResponse<T> doGet(HttpRequest httpRequest, final Type responseType) {
-    HttpTransportRequest transportRequest = this.toTransportRequest(httpRequest);
-    return this.doGetInternal(() -> this.transport.doGet(transportRequest, responseType));
+  public <T> HttpResponse<T> doGet(HttpRequest httpRequest, Type responseType)
+      throws ApolloConfigException {
+    return this.wrapper.doGet(httpRequest, responseType);
   }
-
 }

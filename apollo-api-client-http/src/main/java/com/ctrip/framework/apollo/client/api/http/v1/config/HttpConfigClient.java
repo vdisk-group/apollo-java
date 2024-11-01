@@ -73,18 +73,11 @@ public class HttpConfigClient implements ConfigClient {
   }
 
   @Override
-  public WatchNotificationsResponse watch(Endpoint endpoint, WatchNotificationsRequest request)
-      throws ConfigException {
-    HttpTransportRequest httpTransportRequest = this.toWatchHttpRequest(endpoint, request);
-    HttpTransportResponse<List<ApolloConfigNotification>> httpTransportResponse = this.doGet(
-        "Watch notifications", this.watchTransport,
-        httpTransportRequest, WATCH_NOTIFICATIONS_RESPONSE_TYPE);
-
-    return this.toWatchResponse(httpTransportResponse);
+  public String traceWatch(Endpoint endpoint, WatchNotificationsRequest request) {
+    return this.toWatchHttpUri(endpoint, request);
   }
 
-  private HttpTransportRequest toWatchHttpRequest(Endpoint endpoint,
-      WatchNotificationsRequest request) {
+  private String toWatchHttpUri(Endpoint endpoint, WatchNotificationsRequest request) {
     Map<String, String> queryParams = new LinkedHashMap<>();
     queryParams.put("appId", request.getAppId());
     queryParams.put("cluster", request.getCluster());
@@ -100,7 +93,23 @@ public class HttpConfigClient implements ConfigClient {
     }
     String actualAddress = InternalHttpUtil.getActualAddress(endpoint);
     String query = InternalHttpUtil.toQueryString(queryParams);
-    String uri = MessageFormat.format("{0}/notifications/v2{1}", actualAddress, query);
+    return MessageFormat.format("{0}/notifications/v2{1}", actualAddress, query);
+  }
+
+  @Override
+  public WatchNotificationsResponse watch(Endpoint endpoint, WatchNotificationsRequest request)
+      throws ConfigException {
+    HttpTransportRequest httpTransportRequest = this.toWatchHttpRequest(endpoint, request);
+    HttpTransportResponse<List<ApolloConfigNotification>> httpTransportResponse = this.doGet(
+        "Watch notifications", this.watchTransport,
+        httpTransportRequest, WATCH_NOTIFICATIONS_RESPONSE_TYPE);
+
+    return this.toWatchResponse(httpTransportResponse);
+  }
+
+  private HttpTransportRequest toWatchHttpRequest(Endpoint endpoint,
+      WatchNotificationsRequest request) {
+    String uri = this.toWatchHttpUri(endpoint, request);
 
     HttpTransportRequest.Builder requestBuilder = HttpTransportRequest.builder()
         .url(uri);
@@ -141,7 +150,8 @@ public class HttpConfigClient implements ConfigClient {
   }
 
   private <T> HttpTransportResponse<T> doGet(String scene,
-      HttpTransport transport, HttpTransportRequest httpTransportRequest, Type responseType) {
+      HttpTransport transport, HttpTransportRequest httpTransportRequest, Type responseType)
+      throws ConfigNotFoundException {
     HttpTransportResponse<T> httpTransportResponse;
     try {
       httpTransportResponse = transport.doGet(
@@ -219,30 +229,11 @@ public class HttpConfigClient implements ConfigClient {
   }
 
   @Override
-  public GetConfigResponse get(Endpoint endpoint, GetConfigRequest request)
-      throws ConfigException, ConfigNotFoundException {
-
-    HttpTransportRequest httpTransportRequest = this.toGetConfigHttpRequest(endpoint, request);
-
-    HttpTransportResponse<ApolloConfig> httpTransportResponse = this.doGet("Get config",
-        this.getTransport,
-        httpTransportRequest,
-        ApolloConfig.class);
-
-    ApolloConfig apolloConfig = httpTransportResponse.getBody();
-    if (httpTransportResponse.getStatusCode() == 304) {
-      return GetConfigResponse.builder()
-          .status(GetConfigStatus.NOT_MODIFIED)
-          .build();
-    }
-    GetConfigResult configResult = this.toGetConfigResult(apolloConfig);
-    return GetConfigResponse.builder()
-        .status(GetConfigStatus.OK)
-        .config(configResult)
-        .build();
+  public String traceGetConfig(Endpoint endpoint, GetConfigRequest request) {
+    return this.toGetConfigHttpUri(endpoint, request);
   }
 
-  private HttpTransportRequest toGetConfigHttpRequest(Endpoint endpoint, GetConfigRequest request) {
+  private String toGetConfigHttpUri(Endpoint endpoint, GetConfigRequest request) {
     Map<String, String> queryParams = new LinkedHashMap<>();
 
     String releaseKey = request.getReleaseKey();
@@ -274,9 +265,38 @@ public class HttpConfigClient implements ConfigClient {
 
     String query = InternalHttpUtil.toQueryString(queryParams);
 
-    String uri = MessageFormat.format("{0}/configs/{1}/{2}/{3}{4}", actualAddress,
-        request.getAppId(),
-        request.getCluster(), request.getNamespace(), query);
+    return MessageFormat.format("{0}/configs/{1}/{2}/{3}{4}", actualAddress,
+        InternalHttpUtil.toPathSegment(request.getAppId()),
+        InternalHttpUtil.toPathSegment(request.getCluster()),
+        InternalHttpUtil.toPathSegment(request.getNamespace()), query);
+  }
+
+  @Override
+  public GetConfigResponse getConfig(Endpoint endpoint, GetConfigRequest request)
+      throws ConfigException, ConfigNotFoundException {
+
+    HttpTransportRequest httpTransportRequest = this.toGetConfigHttpRequest(endpoint, request);
+
+    HttpTransportResponse<ApolloConfig> httpTransportResponse = this.doGet("Get config",
+        this.getTransport,
+        httpTransportRequest,
+        ApolloConfig.class);
+
+    ApolloConfig apolloConfig = httpTransportResponse.getBody();
+    if (httpTransportResponse.getStatusCode() == 304) {
+      return GetConfigResponse.builder()
+          .status(GetConfigStatus.NOT_MODIFIED)
+          .build();
+    }
+    GetConfigResult configResult = this.toGetConfigResult(apolloConfig);
+    return GetConfigResponse.builder()
+        .status(GetConfigStatus.OK)
+        .config(configResult)
+        .build();
+  }
+
+  private HttpTransportRequest toGetConfigHttpRequest(Endpoint endpoint, GetConfigRequest request) {
+    String uri = this.toGetConfigHttpUri(endpoint, request);
 
     HttpTransportRequest.Builder requestBuilder = HttpTransportRequest.builder()
         .url(uri);

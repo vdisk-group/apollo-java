@@ -17,18 +17,15 @@
 package com.ctrip.framework.apollo.spi;
 
 import com.ctrip.framework.apollo.build.ApolloInjector;
-import com.ctrip.framework.apollo.client.api.http.v1.config.HttpConfigClientFactory;
-import com.ctrip.framework.apollo.client.api.http.v1.config.HttpConfigClientProperties;
-import com.ctrip.framework.apollo.client.api.v1.config.ConfigClient;
+import com.ctrip.framework.apollo.client.api.http.v1.meta.HttpMetaClientFactory;
+import com.ctrip.framework.apollo.client.api.http.v1.meta.HttpMetaClientProperties;
+import com.ctrip.framework.apollo.client.api.v1.meta.MetaClient;
 import com.ctrip.framework.apollo.core.spi.Ordered;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 
-public class DefaultHttpConfigClientProvider implements ConfigClientProvider {
+public class DefaultHttpMetaClientProvider implements MetaClientProvider {
 
   public static final int ORDER = Ordered.LOWEST_PRECEDENCE - 200;
-
-  // 90 seconds, should be longer than server side's long polling timeout, which is now 60 seconds
-  private static final int LONG_POLLING_READ_TIMEOUT = 90_000;
 
   @Override
   public String getClientType() {
@@ -41,15 +38,15 @@ public class DefaultHttpConfigClientProvider implements ConfigClientProvider {
   }
 
   @Override
-  public ConfigClient createClient() {
+  public MetaClient createClient() {
     ConfigUtil configUtil = ApolloInjector.getInstance(ConfigUtil.class);
-    HttpConfigClientProperties properties = HttpConfigClientProperties.builder()
-        .watchNotificationConnectTimeout(configUtil.getConnectTimeout())
-        .watchNotificationReadTimeout(LONG_POLLING_READ_TIMEOUT)
-        .getConfigConnectTimeout(configUtil.getConnectTimeout())
-        .getConfigReadTimeout(configUtil.getReadTimeout())
+
+    HttpMetaClientProperties properties = HttpMetaClientProperties.builder()
+        .discoveryConnectTimeout(configUtil.getDiscoveryConnectTimeout())
+        .discoveryReadTimeout(configUtil.getDiscoveryConnectTimeout())
         .build();
-    return HttpConfigClientFactory.createClient(properties);
+
+    return HttpMetaClientFactory.createClient(properties);
   }
 
   @Override

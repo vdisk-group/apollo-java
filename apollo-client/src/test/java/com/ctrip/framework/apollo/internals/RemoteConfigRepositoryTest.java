@@ -30,7 +30,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.build.MockInjector;
+import com.ctrip.framework.apollo.client.api.v1.Endpoint;
+import com.ctrip.framework.apollo.client.api.v1.config.ConfigClient;
+import com.ctrip.framework.apollo.client.api.v1.config.GetConfigRequest;
 import com.ctrip.framework.apollo.core.dto.ApolloConfig;
 import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
 import com.ctrip.framework.apollo.core.dto.ApolloNotificationMessages;
@@ -39,12 +43,13 @@ import com.ctrip.framework.apollo.core.signature.Signature;
 import com.ctrip.framework.apollo.enums.ConfigSourceType;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
+import com.ctrip.framework.apollo.spi.ConfigClientHolder;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.apollo.util.OrderedProperties;
 import com.ctrip.framework.apollo.util.factory.PropertiesFactory;
+import com.ctrip.framework.apollo.util.http.HttpClient;
 import com.ctrip.framework.apollo.util.http.HttpRequest;
 import com.ctrip.framework.apollo.util.http.HttpResponse;
-import com.ctrip.framework.apollo.util.http.HttpClient;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -343,10 +348,22 @@ public class RemoteConfigRepositoryTest {
     ApolloConfig someApolloConfig = mock(ApolloConfig.class);
     when(someApolloConfig.getReleaseKey()).thenReturn(someReleaseKey);
 
-    String queryConfigUrl = remoteConfigRepository
+    String queryConfigUrlOld = remoteConfigRepository
         .assembleQueryConfigUrl(someUri, someAppId, someCluster, someNamespace, null,
             notificationMessages,
             someApolloConfig);
+    Endpoint endpoint = Endpoint.builder()
+        .address(someUri)
+        .build();
+    GetConfigRequest configRequest = remoteConfigRepository.assembleQueryConfigRequest(someAppId,
+        someCluster, someNamespace, null,
+        notificationMessages,
+        someApolloConfig);
+    ConfigClientHolder clientHolder = ApolloInjector.getInstance(ConfigClientHolder.class);
+    ConfigClient configClient = clientHolder.getConfigClient();
+    String queryConfigUrl = configClient.traceGetConfig(endpoint, configRequest);
+
+    assertEquals(queryConfigUrlOld, queryConfigUrl);
 
     assertTrue(queryConfigUrl
         .contains(

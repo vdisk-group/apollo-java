@@ -21,5 +21,21 @@ import java.util.List;
 
 public interface MetaClient {
 
-  List<ConfigServiceInstance> getServices(Endpoint endpoint, GetServicesRequest request);
+  /**
+   * trace url for discovery services
+   *
+   * @param endpoint server address
+   * @param request  discovery requests
+   * @return trace url
+   */
+  String traceGetServices(Endpoint endpoint, DiscoveryRequest request);
+
+  /**
+   * discovery services
+   *
+   * @param endpoint server address
+   * @param request  discovery requests
+   * @return services
+   */
+  List<ConfigServiceInstance> getServices(Endpoint endpoint, DiscoveryRequest request);
 }

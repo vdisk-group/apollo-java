@@ -27,6 +27,8 @@ public class InternalHttpUtil {
 
   private static final Joiner.MapJoiner MAP_JOINER = Joiner.on("&").withKeyValueSeparator("=");
 
+  private static final Escaper PATH_ESCAPER = UrlEscapers.urlPathSegmentEscaper();
+
   private static final Escaper QUERY_PARAM_ESCAPER = UrlEscapers.urlFormParameterEscaper();
 
   public static String getActualAddress(Endpoint endpoint) {
@@ -36,6 +38,10 @@ public class InternalHttpUtil {
     } else {
       return address;
     }
+  }
+
+  public static String toPathSegment(String text) {
+    return PATH_ESCAPER.escape(text);
   }
 
   public static String toQueryString(Map<String, String> queryParams) {

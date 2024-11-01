@@ -225,7 +225,7 @@ class HttpConfigClientTest {
     clientLock.lock();
     try {
       this.setUpGetResponse(request);
-      response = client.get(endpoint, request);
+      response = client.getConfig(endpoint, request);
       lastRequest = ConfigControllerTest.getRequest();
     } finally {
       clientLock.unlock();
@@ -316,7 +316,7 @@ class HttpConfigClientTest {
     clientLock.lock();
     try {
       this.setUpGetResponse_not_modified(request);
-      response = client.get(endpoint, request);
+      response = client.getConfig(endpoint, request);
       lastRequest = ConfigControllerTest.getRequest();
     } finally {
       clientLock.unlock();

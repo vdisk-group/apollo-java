@@ -28,15 +28,20 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.build.MockInjector;
+import com.ctrip.framework.apollo.client.api.v1.Endpoint;
+import com.ctrip.framework.apollo.client.api.v1.config.ConfigClient;
+import com.ctrip.framework.apollo.client.api.v1.config.WatchNotificationsRequest;
 import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
 import com.ctrip.framework.apollo.core.dto.ApolloNotificationMessages;
 import com.ctrip.framework.apollo.core.dto.ServiceDTO;
 import com.ctrip.framework.apollo.core.signature.Signature;
+import com.ctrip.framework.apollo.spi.ConfigClientHolder;
 import com.ctrip.framework.apollo.util.ConfigUtil;
+import com.ctrip.framework.apollo.util.http.HttpClient;
 import com.ctrip.framework.apollo.util.http.HttpRequest;
 import com.ctrip.framework.apollo.util.http.HttpResponse;
-import com.ctrip.framework.apollo.util.http.HttpClient;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.net.HttpHeaders;
@@ -502,9 +507,19 @@ public class RemoteConfigLongPollServiceTest {
     long someNotificationId = 1;
     Map<String, Long> notificationsMap = ImmutableMap.of(someNamespace, someNotificationId);
 
-    String longPollRefreshUrl =
+    String longPollRefreshUrlOld =
         remoteConfigLongPollService
             .assembleLongPollRefreshUrl(someUri, someAppId, someCluster, null, notificationsMap);
+    Endpoint endpoint = Endpoint.builder()
+        .address(someUri)
+        .build();
+    WatchNotificationsRequest watchRequest = remoteConfigLongPollService.assembleLongPollRefreshRequest(
+        someAppId, someCluster, null, notificationsMap, null);
+    ConfigClientHolder clientHolder = ApolloInjector.getInstance(ConfigClientHolder.class);
+    ConfigClient configClient = clientHolder.getConfigClient();
+    String longPollRefreshUrl = configClient.traceWatch(endpoint, watchRequest);
+
+    assertEquals(longPollRefreshUrlOld, longPollRefreshUrl);
 
     assertTrue(longPollRefreshUrl.contains(someServerUrl + "/notifications/v2?"));
     assertTrue(longPollRefreshUrl.contains("appId=" + someAppId));
@@ -527,9 +542,19 @@ public class RemoteConfigLongPollServiceTest {
     Map<String, Long> notificationsMap =
         ImmutableMap.of(someNamespace, someNotificationId, anotherNamespace, anotherNotificationId);
 
-    String longPollRefreshUrl =
+    String longPollRefreshUrlOld =
         remoteConfigLongPollService
             .assembleLongPollRefreshUrl(someUri, someAppId, someCluster, null, notificationsMap);
+    Endpoint endpoint = Endpoint.builder()
+        .address(someUri)
+        .build();
+    WatchNotificationsRequest watchRequest = remoteConfigLongPollService.assembleLongPollRefreshRequest(
+        someAppId, someCluster, null, notificationsMap, null);
+    ConfigClientHolder clientHolder = ApolloInjector.getInstance(ConfigClientHolder.class);
+    ConfigClient configClient = clientHolder.getConfigClient();
+    String longPollRefreshUrl = configClient.traceWatch(endpoint, watchRequest);
+
+    assertEquals(longPollRefreshUrlOld, longPollRefreshUrl);
 
     assertTrue(longPollRefreshUrl.contains(someServerUrl + "/notifications/v2?"));
     assertTrue(longPollRefreshUrl.contains("appId=" + someAppId));

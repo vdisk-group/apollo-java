@@ -71,6 +71,7 @@ public class ConfigUtil {
   private boolean propertyNamesCacheEnabled = false;
   private boolean propertyFileCacheEnabled = true;
   private boolean overrideSystemProperties = true;
+  private String clientType = "http";
 
   public ConfigUtil() {
     warnLogRateLimiter = RateLimiter.create(0.017); // 1 warning log output per minute
@@ -86,6 +87,7 @@ public class ConfigUtil {
     initPropertyNamesCacheEnabled();
     initPropertyFileCacheEnabled();
     initOverrideSystemProperties();
+    initClientType();
   }
 
   /**
@@ -473,6 +475,10 @@ public class ConfigUtil {
     return overrideSystemProperties;
   }
 
+  public String getClientType() {
+    return this.clientType;
+  }
+
   private void initPropertyNamesCacheEnabled() {
     propertyNamesCacheEnabled = getPropertyBoolean(ApolloClientSystemConsts.APOLLO_PROPERTY_NAMES_CACHE_ENABLE,
             ApolloClientSystemConsts.APOLLO_PROPERTY_NAMES_CACHE_ENABLE_ENVIRONMENT_VARIABLES,
@@ -489,6 +495,31 @@ public class ConfigUtil {
     overrideSystemProperties = getPropertyBoolean(ApolloClientSystemConsts.APOLLO_OVERRIDE_SYSTEM_PROPERTIES,
             ApolloClientSystemConsts.APOLLO_OVERRIDE_SYSTEM_PROPERTIES,
             overrideSystemProperties);
+  }
+
+  private void initClientType() {
+    String customizedClientType = getCustomizedClientType();
+    if (!Strings.isNullOrEmpty(customizedClientType)) {
+      clientType = customizedClientType;
+    }
+  }
+
+  private String getCustomizedClientType() {
+    String clientTypeSystemProperty = System.getProperty(
+        ApolloClientSystemConsts.APOLLO_CLIENT_TYPE);
+    if (!Strings.isNullOrEmpty(clientTypeSystemProperty)) {
+      return clientTypeSystemProperty;
+    }
+    String clientTypeAppProperty = Foundation.app()
+        .getProperty(ApolloClientSystemConsts.APOLLO_CLIENT_TYPE, null);
+    if (!Strings.isNullOrEmpty(clientTypeAppProperty)) {
+      return clientTypeAppProperty;
+    }
+    String clientTypeEnv = System.getenv(ApolloClientSystemConsts.APOLLO_CLIENT_TYPE);
+    if (!Strings.isNullOrEmpty(clientTypeEnv)) {
+      return clientTypeEnv;
+    }
+    return null;
   }
 
   private boolean getPropertyBoolean(String propertyName, String envName, boolean defaultVal) {
