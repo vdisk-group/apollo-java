@@ -14,31 +14,18 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.spi;
+package com.ctrip.framework.apollo.client.v1.http.util;
 
-import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
-import com.ctrip.framework.apollo.core.spi.Ordered;
+import java.util.Collection;
+import java.util.Map;
 
-public interface ConfigClientProvider extends Ordered {
+public class InternalCollectionUtil {
 
-  /**
-   * get the type of client created by the Provider
-   *
-   * @return the type of client
-   */
-  String getClientType();
+  public static boolean isEmpty(Collection<?> collection) {
+    return collection == null || collection.isEmpty();
+  }
 
-  /**
-   * get the name of Provider
-   *
-   * @return name of Provider
-   */
-  String getName();
-
-  /**
-   * get an instance of ConfigClient
-   *
-   * @return ConfigClient
-   */
-  ConfigClient createClient();
+  public static boolean isEmpty(Map<?, ?> map) {
+    return map == null || map.isEmpty();
+  }
 }

@@ -16,7 +16,7 @@
  */
 package com.ctrip.framework.apollo.spi;
 
-import com.ctrip.framework.apollo.client.api.v1.meta.MetaClient;
+import com.ctrip.framework.apollo.client.v1.api.meta.MetaClient;
 
 public interface MetaClientHolder {
 

@@ -17,14 +17,14 @@
 package com.ctrip.framework.apollo.internals;
 
 import com.ctrip.framework.apollo.build.ApolloInjector;
-import com.ctrip.framework.apollo.client.api.v1.Endpoint;
-import com.ctrip.framework.apollo.client.api.v1.config.ConfigClient;
-import com.ctrip.framework.apollo.client.api.v1.config.NotificationDefinition;
-import com.ctrip.framework.apollo.client.api.v1.config.NotificationMessages;
-import com.ctrip.framework.apollo.client.api.v1.config.NotificationResult;
-import com.ctrip.framework.apollo.client.api.v1.config.WatchNotificationsRequest;
-import com.ctrip.framework.apollo.client.api.v1.config.WatchNotificationsResponse;
-import com.ctrip.framework.apollo.client.api.v1.config.WatchNotificationsStatus;
+import com.ctrip.framework.apollo.client.v1.api.Endpoint;
+import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
+import com.ctrip.framework.apollo.client.v1.api.config.NotificationDefinition;
+import com.ctrip.framework.apollo.client.v1.api.config.NotificationMessages;
+import com.ctrip.framework.apollo.client.v1.api.config.NotificationResult;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsRequest;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsResponse;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsStatus;
 import com.ctrip.framework.apollo.core.ConfigConsts;
 import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
 import com.ctrip.framework.apollo.core.dto.ApolloNotificationMessages;

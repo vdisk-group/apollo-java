@@ -14,31 +14,28 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.spi;
+package com.ctrip.framework.apollo.client.v1.api.meta;
 
-import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
-import com.ctrip.framework.apollo.core.spi.Ordered;
+import com.ctrip.framework.apollo.client.v1.api.Endpoint;
+import java.util.List;
 
-public interface ConfigClientProvider extends Ordered {
-
-  /**
-   * get the type of client created by the Provider
-   *
-   * @return the type of client
-   */
-  String getClientType();
+public interface MetaClient {
 
   /**
-   * get the name of Provider
+   * trace url for discovery services
    *
-   * @return name of Provider
+   * @param endpoint server address
+   * @param request  discovery requests
+   * @return trace url
    */
-  String getName();
+  String traceGetServices(Endpoint endpoint, DiscoveryRequest request);
 
   /**
-   * get an instance of ConfigClient
+   * discovery services
    *
-   * @return ConfigClient
+   * @param endpoint server address
+   * @param request  discovery requests
+   * @return services
    */
-  ConfigClient createClient();
+  List<ConfigServiceInstance> getServices(Endpoint endpoint, DiscoveryRequest request);
 }

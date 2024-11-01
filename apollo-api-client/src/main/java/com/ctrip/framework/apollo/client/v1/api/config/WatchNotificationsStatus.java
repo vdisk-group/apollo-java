@@ -14,31 +14,21 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.spi;
+package com.ctrip.framework.apollo.client.v1.api.config;
 
-import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
-import com.ctrip.framework.apollo.core.spi.Ordered;
+public enum WatchNotificationsStatus {
 
-public interface ConfigClientProvider extends Ordered {
+  OK(200),
+  NOT_MODIFIED(304),
+  ;
 
-  /**
-   * get the type of client created by the Provider
-   *
-   * @return the type of client
-   */
-  String getClientType();
+  private final int code;
 
-  /**
-   * get the name of Provider
-   *
-   * @return name of Provider
-   */
-  String getName();
+  WatchNotificationsStatus(int code) {
+    this.code = code;
+  }
 
-  /**
-   * get an instance of ConfigClient
-   *
-   * @return ConfigClient
-   */
-  ConfigClient createClient();
+  public int getCode() {
+    return this.code;
+  }
 }

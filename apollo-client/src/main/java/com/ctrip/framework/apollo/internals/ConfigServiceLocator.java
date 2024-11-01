@@ -17,10 +17,10 @@
 package com.ctrip.framework.apollo.internals;
 
 import com.ctrip.framework.apollo.build.ApolloInjector;
-import com.ctrip.framework.apollo.client.api.v1.Endpoint;
-import com.ctrip.framework.apollo.client.api.v1.meta.ConfigServiceInstance;
-import com.ctrip.framework.apollo.client.api.v1.meta.DiscoveryRequest;
-import com.ctrip.framework.apollo.client.api.v1.meta.MetaClient;
+import com.ctrip.framework.apollo.client.v1.api.Endpoint;
+import com.ctrip.framework.apollo.client.v1.api.meta.ConfigServiceInstance;
+import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryRequest;
+import com.ctrip.framework.apollo.client.v1.api.meta.MetaClient;
 import com.ctrip.framework.apollo.core.ApolloClientSystemConsts;
 import com.ctrip.framework.apollo.core.ServiceNameConsts;
 import com.ctrip.framework.apollo.core.dto.ServiceDTO;

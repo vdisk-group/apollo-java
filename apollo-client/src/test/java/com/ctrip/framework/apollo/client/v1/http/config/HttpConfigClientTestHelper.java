@@ -14,31 +14,13 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.spi;
+package com.ctrip.framework.apollo.client.v1.http.config;
 
-import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
-import com.ctrip.framework.apollo.core.spi.Ordered;
+import java.lang.reflect.Type;
 
-public interface ConfigClientProvider extends Ordered {
+public class HttpConfigClientTestHelper {
 
-  /**
-   * get the type of client created by the Provider
-   *
-   * @return the type of client
-   */
-  String getClientType();
-
-  /**
-   * get the name of Provider
-   *
-   * @return name of Provider
-   */
-  String getName();
-
-  /**
-   * get an instance of ConfigClient
-   *
-   * @return ConfigClient
-   */
-  ConfigClient createClient();
+  public static Type getWatchNotificationsResponseType() {
+    return HttpConfigClient.WATCH_NOTIFICATIONS_RESPONSE_TYPE;
+  }
 }

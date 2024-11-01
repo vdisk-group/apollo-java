@@ -17,7 +17,7 @@
 package com.ctrip.framework.apollo.spi;
 
 import com.ctrip.framework.apollo.build.ApolloInjector;
-import com.ctrip.framework.apollo.client.api.v1.meta.MetaClient;
+import com.ctrip.framework.apollo.client.v1.api.meta.MetaClient;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.foundation.internals.ServiceBootstrap;
 import java.util.ArrayList;

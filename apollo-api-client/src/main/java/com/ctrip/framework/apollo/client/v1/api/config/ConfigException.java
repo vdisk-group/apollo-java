@@ -14,31 +14,20 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.spi;
+package com.ctrip.framework.apollo.client.v1.api.config;
 
-import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
-import com.ctrip.framework.apollo.core.spi.Ordered;
+public class ConfigException extends RuntimeException {
 
-public interface ConfigClientProvider extends Ordered {
+  private static final long serialVersionUID = -1728180523064506770L;
 
-  /**
-   * get the type of client created by the Provider
-   *
-   * @return the type of client
-   */
-  String getClientType();
+  public ConfigException() {
+  }
 
-  /**
-   * get the name of Provider
-   *
-   * @return name of Provider
-   */
-  String getName();
+  public ConfigException(String message) {
+    super(message);
+  }
 
-  /**
-   * get an instance of ConfigClient
-   *
-   * @return ConfigClient
-   */
-  ConfigClient createClient();
+  public ConfigException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

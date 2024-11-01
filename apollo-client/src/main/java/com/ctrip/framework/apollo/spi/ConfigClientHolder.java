@@ -16,7 +16,7 @@
  */
 package com.ctrip.framework.apollo.spi;
 
-import com.ctrip.framework.apollo.client.api.v1.config.ConfigClient;
+import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 
 public interface ConfigClientHolder {
 

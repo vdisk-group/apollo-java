@@ -17,9 +17,9 @@
 package com.ctrip.framework.apollo.spi;
 
 import com.ctrip.framework.apollo.build.ApolloInjector;
-import com.ctrip.framework.apollo.client.api.http.v1.config.HttpConfigClientFactory;
-import com.ctrip.framework.apollo.client.api.http.v1.config.HttpConfigClientProperties;
-import com.ctrip.framework.apollo.client.api.v1.config.ConfigClient;
+import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
+import com.ctrip.framework.apollo.client.v1.http.config.HttpConfigClientFactory;
+import com.ctrip.framework.apollo.client.v1.http.config.HttpConfigClientProperties;
 import com.ctrip.framework.apollo.core.http.HttpTransport;
 import com.ctrip.framework.apollo.core.spi.Ordered;
 import com.ctrip.framework.apollo.util.ConfigUtil;
