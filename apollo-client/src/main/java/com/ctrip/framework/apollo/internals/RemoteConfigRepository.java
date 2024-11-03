@@ -20,26 +20,31 @@ import static com.ctrip.framework.apollo.monitor.internal.ApolloClientMonitorCon
 
 import com.ctrip.framework.apollo.Apollo;
 import com.ctrip.framework.apollo.build.ApolloInjector;
+import com.ctrip.framework.apollo.client.v1.api.Endpoint;
+import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
+import com.ctrip.framework.apollo.client.v1.api.config.ConfigNotFoundException;
+import com.ctrip.framework.apollo.client.v1.api.config.GetConfigOptions;
+import com.ctrip.framework.apollo.client.v1.api.config.GetConfigRequest;
+import com.ctrip.framework.apollo.client.v1.api.config.GetConfigResponse;
+import com.ctrip.framework.apollo.client.v1.api.config.GetConfigResult;
+import com.ctrip.framework.apollo.client.v1.api.config.GetConfigStatus;
+import com.ctrip.framework.apollo.client.v1.api.config.NotificationMessages;
 import com.ctrip.framework.apollo.core.ConfigConsts;
 import com.ctrip.framework.apollo.core.dto.ApolloConfig;
 import com.ctrip.framework.apollo.core.dto.ApolloNotificationMessages;
 import com.ctrip.framework.apollo.core.dto.ServiceDTO;
 import com.ctrip.framework.apollo.core.schedule.ExponentialSchedulePolicy;
 import com.ctrip.framework.apollo.core.schedule.SchedulePolicy;
-import com.ctrip.framework.apollo.core.signature.Signature;
 import com.ctrip.framework.apollo.core.utils.ApolloThreadFactory;
 import com.ctrip.framework.apollo.core.utils.DeferredLoggerFactory;
-import com.ctrip.framework.apollo.core.utils.StringUtils;
 import com.ctrip.framework.apollo.enums.ConfigSourceType;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
+import com.ctrip.framework.apollo.spi.ConfigClientHolder;
 import com.ctrip.framework.apollo.tracer.Tracer;
 import com.ctrip.framework.apollo.tracer.spi.Transaction;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.apollo.util.ExceptionUtil;
-import com.ctrip.framework.apollo.util.http.HttpClient;
-import com.ctrip.framework.apollo.util.http.HttpRequest;
-import com.ctrip.framework.apollo.util.http.HttpResponse;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -49,6 +54,7 @@ import com.google.common.net.UrlEscapers;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.gson.Gson;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -70,7 +76,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
   private static final Escaper queryParamEscaper = UrlEscapers.urlFormParameterEscaper();
 
   private final ConfigServiceLocator m_serviceLocator;
-  private final HttpClient m_httpClient;
+  private final ConfigClientHolder m_configClientHolder;
   private final ConfigUtil m_configUtil;
   private final RemoteConfigLongPollService remoteConfigLongPollService;
   private volatile AtomicReference<ApolloConfig> m_configCache;
@@ -97,7 +103,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
     m_namespace = namespace;
     m_configCache = new AtomicReference<>();
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
-    m_httpClient = ApolloInjector.getInstance(HttpClient.class);
+    m_configClientHolder = ApolloInjector.getInstance(ConfigClientHolder.class);
     m_serviceLocator = ApolloInjector.getInstance(ConfigServiceLocator.class);
     remoteConfigLongPollService = ApolloInjector.getInstance(RemoteConfigLongPollService.class);
     m_longPollServiceDto = new AtomicReference<>();
@@ -222,58 +228,55 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
             //ignore
           }
         }
+        ConfigClient configClient = m_configClientHolder.getConfigClient();
 
-        url = assembleQueryConfigUrl(configService.getHomepageUrl(), appId, cluster, m_namespace,
-                dataCenter, m_remoteMessages.get(), m_configCache.get());
+        Endpoint endpoint = Endpoint.builder()
+            .address(configService.getHomepageUrl())
+            .build();
+        GetConfigOptions configOptions = assembleQueryConfigOptions(appId, cluster, m_namespace,
+            dataCenter, m_remoteMessages.get(), m_configCache.get());
+        GetConfigRequest configRequest = GetConfigRequest.builder()
+            .endpoint(endpoint)
+            .options(configOptions)
+            .build();
+        url = configClient.traceGetConfig(configRequest);
 
         logger.debug("Loading config from {}", url);
-
-        HttpRequest request = new HttpRequest(url);
-        if (!StringUtils.isBlank(secret)) {
-          Map<String, String> headers = Signature.buildHttpHeaders(url, appId, secret);
-          request.setHeaders(headers);
-        }
 
         Transaction transaction = Tracer.newTransaction("Apollo.ConfigService", "queryConfig");
         transaction.addData("Url", url);
         try {
 
-          HttpResponse<ApolloConfig> response = m_httpClient.doGet(request, ApolloConfig.class);
+          GetConfigResponse configResponse = configClient.getConfig(configRequest);
           m_configNeedForceRefresh.set(false);
           m_loadConfigFailSchedulePolicy.success();
 
-          transaction.addData("StatusCode", response.getStatusCode());
+          transaction.addData("StatusCode", configResponse.getStatus().getCode());
           transaction.setStatus(Transaction.SUCCESS);
 
-          if (response.getStatusCode() == 304) {
+          if (GetConfigStatus.NOT_MODIFIED == configResponse.getStatus()) {
             logger.debug("Config server responds with 304 HTTP status code.");
             return m_configCache.get();
           }
-
-          ApolloConfig result = response.getBody();
+          GetConfigResult config = configResponse.getConfig();
+          ApolloConfig result = toApolloConfig(config);
 
           logger.debug("Loaded config for {}: {}", m_namespace, result);
 
           return result;
-        } catch (ApolloConfigStatusCodeException ex) {
-          ApolloConfigStatusCodeException statusCodeException = ex;
-          //config not found
-          if (ex.getStatusCode() == 404) {
-            String message = String.format(
-                "Could not find config for namespace - appId: %s, cluster: %s, namespace: %s, " +
-                    "please check whether the configs are released in Apollo!",
-                appId, cluster, m_namespace);
-            statusCodeException = new ApolloConfigStatusCodeException(ex.getStatusCode(),
-                message);
+        } catch (ConfigNotFoundException ex) {
+          // config not found
+          String message = String.format(
+              "Could not find config for namespace - appId: %s, cluster: %s, namespace: %s, " +
+                  "please check whether the configs are released in Apollo!",
+              appId, cluster, m_namespace);
+          ApolloConfigStatusCodeException statusCodeException = new ApolloConfigStatusCodeException(
+              404, message);
             Tracer.logEvent(APOLLO_CLIENT_NAMESPACE_NOT_FOUND,m_namespace);
-            
-          }
-          Tracer.logEvent(APOLLO_CONFIG_EXCEPTION, ExceptionUtil.getDetailMessage(statusCodeException));
-          transaction.setStatus(statusCodeException);
+            Tracer.logEvent(APOLLO_CONFIG_EXCEPTION, ExceptionUtil.getDetailMessage(statusCodeException));
+            transaction.setStatus(statusCodeException);
           exception = statusCodeException;
-          if(ex.getStatusCode() == 404) {
-            break retryLoopLabel;
-          }
+          break retryLoopLabel;
         } catch (Throwable ex) {
           Tracer.logEvent(APOLLO_CONFIG_EXCEPTION, ExceptionUtil.getDetailMessage(ex));
           transaction.setStatus(ex);
@@ -294,6 +297,45 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
     throw new ApolloConfigException(message, exception);
   }
 
+  GetConfigOptions assembleQueryConfigOptions(String appId, String cluster, String namespace,
+      String dataCenter, ApolloNotificationMessages remoteMessages, ApolloConfig previousConfig) {
+    String releaseKey = previousConfig != null ? previousConfig.getReleaseKey() : null;
+    String localIp = m_configUtil.getLocalIp();
+    String label = m_configUtil.getApolloLabel();
+    NotificationMessages notificationMessages = this.toNotificationMessages(remoteMessages);
+    String secret = m_configUtil.getAccessKeySecret();
+    return GetConfigOptions.builder()
+        .appId(appId)
+        .cluster(cluster)
+        .namespace(namespace)
+        .releaseKey(releaseKey)
+        .dataCenter(dataCenter)
+        .clientIp(localIp)
+        .label(label)
+        .messages(notificationMessages)
+        .accessKeySecret(secret)
+        .build();
+  }
+
+  private NotificationMessages toNotificationMessages(ApolloNotificationMessages remoteMessages) {
+    if (remoteMessages == null) {
+      return null;
+    }
+    return NotificationMessages.builder()
+        .details(new LinkedHashMap<>(remoteMessages.getDetails()))
+        .build();
+  }
+
+  private ApolloConfig toApolloConfig(GetConfigResult configResult) {
+    ApolloConfig apolloConfig = new ApolloConfig();
+    apolloConfig.setAppId(configResult.getAppId());
+    apolloConfig.setCluster(configResult.getCluster());
+    apolloConfig.setNamespaceName(configResult.getNamespaceName());
+    apolloConfig.setReleaseKey(configResult.getReleaseKey());
+    apolloConfig.setConfigurations(new LinkedHashMap<>(configResult.getConfigurations()));
+    return apolloConfig;
+  }
+
   String assembleQueryConfigUrl(String uri, String appId, String cluster, String namespace,
                                 String dataCenter, ApolloNotificationMessages remoteMessages, ApolloConfig previousConfig) {
 
@@ -301,7 +343,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
     List<String> pathParams =
         Lists.newArrayList(pathEscaper.escape(appId), pathEscaper.escape(cluster),
             pathEscaper.escape(namespace));
-    Map<String, String> queryParams = Maps.newHashMap();
+    Map<String, String> queryParams = Maps.newLinkedHashMap();
 
     if (previousConfig != null) {
       queryParams.put("releaseKey", queryParamEscaper.escape(previousConfig.getReleaseKey()));

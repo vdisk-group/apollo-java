@@ -54,7 +54,7 @@ public class ApolloMockServerApiWhileCacheDirSpecifiedTest {
     ConfigUtil configUtil = spy(new ConfigUtil());
     doReturn(someAppId).when(configUtil).getAppId();
     String defaultLocalCacheDir = ReflectionTestUtils.invokeMethod(configUtil, "getDefaultLocalCacheDir", new Object[]{});
-    assertEquals(someCacheDir + "/" + someAppId, defaultLocalCacheDir);
+    assertEquals(someCacheDir + File.separator + someAppId, defaultLocalCacheDir);
 
     // LocalFileConfigRepository.CONFIG_DIR
     LocalFileConfigRepository localFileConfigRepository = new LocalFileConfigRepository(someNamespace);

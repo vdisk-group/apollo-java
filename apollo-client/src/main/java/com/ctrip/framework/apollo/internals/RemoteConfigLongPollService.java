@@ -18,6 +18,15 @@ package com.ctrip.framework.apollo.internals;
 
 import static com.ctrip.framework.apollo.monitor.internal.ApolloClientMonitorConstant.*;
 import com.ctrip.framework.apollo.build.ApolloInjector;
+import com.ctrip.framework.apollo.client.v1.api.Endpoint;
+import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
+import com.ctrip.framework.apollo.client.v1.api.config.NotificationDefinition;
+import com.ctrip.framework.apollo.client.v1.api.config.NotificationMessages;
+import com.ctrip.framework.apollo.client.v1.api.config.NotificationResult;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsOptions;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsRequest;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsResponse;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsStatus;
 import com.ctrip.framework.apollo.core.ConfigConsts;
 import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
 import com.ctrip.framework.apollo.core.dto.ApolloNotificationMessages;
@@ -25,20 +34,17 @@ import com.ctrip.framework.apollo.core.dto.ServiceDTO;
 import com.ctrip.framework.apollo.core.enums.ConfigFileFormat;
 import com.ctrip.framework.apollo.core.schedule.ExponentialSchedulePolicy;
 import com.ctrip.framework.apollo.core.schedule.SchedulePolicy;
-import com.ctrip.framework.apollo.core.signature.Signature;
 import com.ctrip.framework.apollo.core.utils.ApolloThreadFactory;
-import com.ctrip.framework.apollo.core.utils.StringUtils;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
+import com.ctrip.framework.apollo.spi.ConfigClientHolder;
 import com.ctrip.framework.apollo.spi.ConfigServiceLoadBalancerClient;
 import com.ctrip.framework.apollo.tracer.Tracer;
 import com.ctrip.framework.apollo.tracer.spi.Transaction;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.apollo.util.ExceptionUtil;
-import com.ctrip.framework.apollo.util.http.HttpClient;
-import com.ctrip.framework.apollo.util.http.HttpRequest;
-import com.ctrip.framework.apollo.util.http.HttpResponse;
 import com.ctrip.framework.foundation.internals.ServiceBootstrap;
 import com.google.common.base.Joiner;
+import com.google.common.base.Joiner.MapJoiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
@@ -47,13 +53,14 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.escape.Escaper;
 import com.google.common.net.UrlEscapers;
-import com.google.common.reflect.TypeToken;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.gson.Gson;
-import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -69,7 +76,7 @@ import org.slf4j.LoggerFactory;
 public class RemoteConfigLongPollService {
   private static final Logger logger = LoggerFactory.getLogger(RemoteConfigLongPollService.class);
   private static final Joiner STRING_JOINER = Joiner.on(ConfigConsts.CLUSTER_NAMESPACE_SEPARATOR);
-  private static final Joiner.MapJoiner MAP_JOINER = Joiner.on("&").withKeyValueSeparator("=");
+  private static final MapJoiner MAP_JOINER = Joiner.on("&").withKeyValueSeparator("=");
   private static final Escaper queryParamEscaper = UrlEscapers.urlFormParameterEscaper();
   private static final long INIT_NOTIFICATION_ID = ConfigConsts.NOTIFICATION_ID_PLACEHOLDER;
   //90 seconds, should be longer than server side's long polling timeout, which is now 60 seconds
@@ -82,10 +89,9 @@ public class RemoteConfigLongPollService {
   private final Multimap<String, RemoteConfigRepository> m_longPollNamespaces;
   private final ConcurrentMap<String, Long> m_notifications;
   private final Map<String, ApolloNotificationMessages> m_remoteNotificationMessages;//namespaceName -> watchedKey -> notificationId
-  private Type m_responseType;
   private static final Gson GSON = new Gson();
   private ConfigUtil m_configUtil;
-  private HttpClient m_httpClient;
+  private final ConfigClientHolder m_configClientHolder;
   private ConfigServiceLocator m_serviceLocator;
   private final ConfigServiceLoadBalancerClient configServiceLoadBalancerClient = ServiceBootstrap.loadPrimary(
       ConfigServiceLoadBalancerClient.class);
@@ -103,10 +109,8 @@ public class RemoteConfigLongPollService {
         Multimaps.synchronizedSetMultimap(HashMultimap.<String, RemoteConfigRepository>create());
     m_notifications = Maps.newConcurrentMap();
     m_remoteNotificationMessages = Maps.newConcurrentMap();
-    m_responseType = new TypeToken<List<ApolloConfigNotification>>() {
-    }.getType();
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
-    m_httpClient = ApolloInjector.getInstance(HttpClient.class);
+    m_configClientHolder = ApolloInjector.getInstance(ConfigClientHolder.class);
     m_serviceLocator = ApolloInjector.getInstance(ConfigServiceLocator.class);
     m_longPollRateLimiter = RateLimiter.create(m_configUtil.getLongPollQPS());
   }
@@ -174,40 +178,47 @@ public class RemoteConfigLongPollService {
         if (lastServiceDto == null) {
           lastServiceDto = this.resolveConfigService();
         }
+        ConfigClient configClient = m_configClientHolder.getConfigClient();
 
-        url =
-            assembleLongPollRefreshUrl(lastServiceDto.getHomepageUrl(), appId, cluster, dataCenter,
-                m_notifications);
+        Endpoint endpoint = Endpoint.builder()
+            .address(lastServiceDto.getHomepageUrl())
+            .build();
+        WatchNotificationsOptions watchOptions = assembleLongPollRefreshOptions(appId, cluster,
+            dataCenter,
+            m_notifications, secret);
+        WatchNotificationsRequest watchRequest = WatchNotificationsRequest.builder()
+            .endpoint(endpoint)
+            .options(watchOptions)
+            .build();
+        url = configClient.traceWatch(watchRequest);
 
         logger.debug("Long polling from {}", url);
 
-        HttpRequest request = new HttpRequest(url);
-        request.setReadTimeout(LONG_POLLING_READ_TIMEOUT);
-        if (!StringUtils.isBlank(secret)) {
-          Map<String, String> headers = Signature.buildHttpHeaders(url, appId, secret);
-          request.setHeaders(headers);
-        }
-
         transaction.addData("Url", url);
 
-        final HttpResponse<List<ApolloConfigNotification>> response =
-            m_httpClient.doGet(request, m_responseType);
+        WatchNotificationsResponse watchResponse = configClient.watch(watchRequest);
 
-        logger.debug("Long polling response: {}, url: {}", response.getStatusCode(), url);
-        if (response.getStatusCode() == 200 && response.getBody() != null) {
-          updateNotifications(response.getBody());
-          updateRemoteNotifications(response.getBody());
-          transaction.addData("Result", response.getBody().toString());
-          notify(lastServiceDto, response.getBody());
+        logger.debug("Long polling response: {}, url: {}", watchResponse.getStatus().getCode(),
+            url);
+        List<NotificationResult> notificationResults = watchResponse.getNotifications();
+        if (WatchNotificationsStatus.OK == watchResponse.getStatus()
+            && notificationResults != null) {
+          List<ApolloConfigNotification> deltaNotifications = toApolloNotifications(
+              notificationResults);
+          updateNotifications(deltaNotifications);
+          updateRemoteNotifications(deltaNotifications);
+          transaction.addData("Result", deltaNotifications.toString());
+          notify(lastServiceDto, deltaNotifications);
         }
 
         //try to load balance
-        if (response.getStatusCode() == 304 && ThreadLocalRandom.current().nextBoolean()) {
+        if (WatchNotificationsStatus.NOT_MODIFIED == watchResponse.getStatus()
+            && ThreadLocalRandom.current().nextBoolean()) {
           lastServiceDto = null;
         }
 
         m_longPollFailSchedulePolicyInSecond.success();
-        transaction.addData("StatusCode", response.getStatusCode());
+        transaction.addData("StatusCode", watchResponse.getStatus().getCode());
         transaction.setStatus(Transaction.SUCCESS);
       } catch (Throwable ex) {
         lastServiceDto = null;
@@ -220,6 +231,18 @@ public class RemoteConfigLongPollService {
         logger.warn(
             "Long polling failed, will retry in {} seconds. appId: {}, cluster: {}, namespaces: {}, long polling url: {}, reason: {}",
             sleepTimeInSecond, appId, cluster, assembleNamespaces(), url, ExceptionUtil.getDetailMessage(ex));
+        if (logger.isDebugEnabled()) {
+          // stacktrace print in debug mode
+          logger.warn(
+              "Long polling failed, will retry in {} seconds. appId: {}, cluster: {}, namespaces: {}, long polling url: {}, reason: {}",
+              sleepTimeInSecond, appId, cluster, assembleNamespaces(), url,
+              ExceptionUtil.getDetailMessage(ex), ex);
+        } else {
+          logger.warn(
+              "Long polling failed, will retry in {} seconds. appId: {}, cluster: {}, namespaces: {}, long polling url: {}, reason: {}",
+              sleepTimeInSecond, appId, cluster, assembleNamespaces(), url,
+              ExceptionUtil.getDetailMessage(ex));
+        }
         try {
           TimeUnit.SECONDS.sleep(sleepTimeInSecond);
         } catch (InterruptedException ie) {
@@ -298,9 +321,69 @@ public class RemoteConfigLongPollService {
     return STRING_JOINER.join(m_longPollNamespaces.keySet());
   }
 
+  WatchNotificationsOptions assembleLongPollRefreshOptions(String appId, String cluster,
+      String dataCenter,
+      Map<String, Long> notificationsMap, String secret) {
+    List<NotificationDefinition> notifications = this.toNotificationDefinitions(notificationsMap);
+
+    String localIp = this.m_configUtil.getLocalIp();
+    String label = this.m_configUtil.getApolloLabel();
+    return WatchNotificationsOptions.builder()
+        .appId(appId)
+        .cluster(cluster)
+        .notifications(notifications)
+        .dataCenter(dataCenter)
+        .clientIp(localIp)
+        .label(label)
+        .accessKeySecret(secret)
+        .build();
+  }
+
+  private List<NotificationDefinition> toNotificationDefinitions(
+      Map<String, Long> notificationsMap) {
+    List<NotificationDefinition> notifications = new ArrayList<>(notificationsMap.size());
+    for (Entry<String, Long> entry : notificationsMap.entrySet()) {
+      NotificationDefinition notification = NotificationDefinition.builder()
+          .namespaceName(entry.getKey())
+          .notificationId(entry.getValue())
+          .build();
+      notifications.add(notification);
+    }
+    return notifications;
+  }
+
+  private List<ApolloConfigNotification> toApolloNotifications(
+      List<NotificationResult> notificationResults) {
+    List<ApolloConfigNotification> notifications = new ArrayList<>(notificationResults.size());
+    for (NotificationResult notificationResult : notificationResults) {
+      ApolloNotificationMessages messages = this.toApolloNotificationMessages(
+          notificationResult.getMessages());
+
+      ApolloConfigNotification notification = new ApolloConfigNotification(
+          notificationResult.getNamespaceName(),
+          notificationResult.getNotificationId());
+      notification.setMessages(messages);
+
+      notifications.add(notification);
+    }
+    return notifications;
+  }
+
+  private ApolloNotificationMessages toApolloNotificationMessages(
+      NotificationMessages notificationMessages) {
+    Map<String, Long> details =
+        notificationMessages != null ? notificationMessages.getDetails() : null;
+    if (details == null) {
+      return null;
+    }
+    ApolloNotificationMessages messages = new ApolloNotificationMessages();
+    messages.setDetails(new TreeMap<>(details));
+    return messages;
+  }
+
   String assembleLongPollRefreshUrl(String uri, String appId, String cluster, String dataCenter,
                                     Map<String, Long> notificationsMap) {
-    Map<String, String> queryParams = Maps.newHashMap();
+    Map<String, String> queryParams = Maps.newLinkedHashMap();
     queryParams.put("appId", queryParamEscaper.escape(appId));
     queryParams.put("cluster", queryParamEscaper.escape(cluster));
     queryParams
@@ -324,7 +407,7 @@ public class RemoteConfigLongPollService {
 
   String assembleNotifications(Map<String, Long> notificationsMap) {
     List<ApolloConfigNotification> notifications = Lists.newArrayList();
-    for (Map.Entry<String, Long> entry : notificationsMap.entrySet()) {
+    for (Entry<String, Long> entry : notificationsMap.entrySet()) {
       ApolloConfigNotification notification = new ApolloConfigNotification(entry.getKey(), entry.getValue());
       notifications.add(notification);
     }

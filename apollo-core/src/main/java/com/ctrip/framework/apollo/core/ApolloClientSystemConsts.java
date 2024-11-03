@@ -205,4 +205,14 @@ public class ApolloClientSystemConsts {
    * apollo client monitor collect period
    */
   public static final String APOLLO_CLIENT_MONITOR_EXTERNAL_EXPORT_PERIOD = "apollo.client.monitor.external.export-period";
+
+  /**
+   * apollo client type
+   */
+  public static final String APOLLO_CLIENT_TYPE = "apollo.client-type";
+
+  /**
+   * apollo client type environment variables
+   */
+  public static final String APOLLO_CLIENT_TYPE_ENVIRONMENT_VARIABLES = "APOLLO_CLIENT_TYPE";
 }

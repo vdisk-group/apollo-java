@@ -30,21 +30,32 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.build.MockInjector;
+import com.ctrip.framework.apollo.client.v1.api.Endpoint;
+import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
+import com.ctrip.framework.apollo.client.v1.api.config.GetConfigOptions;
+import com.ctrip.framework.apollo.client.v1.api.config.GetConfigRequest;
+import com.ctrip.framework.apollo.client.v1.http.config.HttpConfigClientTestHelper;
 import com.ctrip.framework.apollo.core.dto.ApolloConfig;
 import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
 import com.ctrip.framework.apollo.core.dto.ApolloNotificationMessages;
 import com.ctrip.framework.apollo.core.dto.ServiceDTO;
+import com.ctrip.framework.apollo.core.http.HttpTransport;
+import com.ctrip.framework.apollo.core.http.HttpTransportException;
+import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
+import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
+import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
+import com.ctrip.framework.apollo.core.http.TypeReference;
 import com.ctrip.framework.apollo.core.signature.Signature;
 import com.ctrip.framework.apollo.enums.ConfigSourceType;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
+import com.ctrip.framework.apollo.spi.ConfigClientHolder;
+import com.ctrip.framework.apollo.spi.MockConfigClientHolder;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.apollo.util.OrderedProperties;
 import com.ctrip.framework.apollo.util.factory.PropertiesFactory;
-import com.ctrip.framework.apollo.util.http.HttpRequest;
-import com.ctrip.framework.apollo.util.http.HttpResponse;
-import com.ctrip.framework.apollo.util.http.HttpClient;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -52,7 +63,6 @@ import com.google.common.net.HttpHeaders;
 import com.google.common.net.UrlEscapers;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gson.Gson;
-import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -79,11 +89,13 @@ public class RemoteConfigRepositoryTest {
   private String someNamespace;
   private String someServerUrl;
   private ConfigUtil configUtil;
-  private HttpClient httpClient;
+  private HttpTransport httpTransport;
+  private static TypeReference<ApolloConfig> getConfigResponseType;
+  private static TypeReference<List<ApolloConfigNotification>> watchNotificationsResponseType;
   @Mock
-  private static HttpResponse<ApolloConfig> someResponse;
+  private static HttpTransportResponse<ApolloConfig> someResponse;
   @Mock
-  private static HttpResponse<List<ApolloConfigNotification>> pollResponse;
+  private static HttpTransportResponse<List<ApolloConfigNotification>> pollResponse;
   private RemoteConfigLongPollService remoteConfigLongPollService;
   @Mock
   private PropertiesFactory propertiesFactory;
@@ -109,8 +121,11 @@ public class RemoteConfigRepositoryTest {
     when(configServiceLocator.getConfigServices()).thenReturn(Lists.newArrayList(serviceDTO));
     MockInjector.setInstance(ConfigServiceLocator.class, configServiceLocator);
 
-    httpClient = spy(new MockHttpClient());
-    MockInjector.setInstance(HttpClient.class, httpClient);
+    httpTransport = spy(new MockHttpTransport());
+    MockInjector.setInstance(HttpTransport.class, httpTransport);
+    MockInjector.setInstance(ConfigClientHolder.class, new MockConfigClientHolder());
+    getConfigResponseType = HttpConfigClientTestHelper.getGetConfigResponseType();
+    watchNotificationsResponseType = HttpConfigClientTestHelper.getWatchNotificationsResponseType();
 
     remoteConfigLongPollService = new RemoteConfigLongPollService();
 
@@ -195,10 +210,11 @@ public class RemoteConfigRepositoryTest {
 
     when(someResponse.getStatusCode()).thenReturn(200);
     when(someResponse.getBody()).thenReturn(someApolloConfig);
-    doAnswer(new Answer<HttpResponse<ApolloConfig>>() {
+    doAnswer(new Answer<HttpTransportResponse<ApolloConfig>>() {
       @Override
-      public HttpResponse<ApolloConfig> answer(InvocationOnMock invocation) throws Throwable {
-        HttpRequest request = invocation.getArgument(0, HttpRequest.class);
+      public HttpTransportResponse<ApolloConfig> answer(InvocationOnMock invocation)
+          throws Throwable {
+        HttpTransportRequest request = invocation.getArgument(0, HttpTransportRequest.class);
         Map<String, String> headers = request.getHeaders();
         assertNotNull(headers);
         assertTrue(headers.containsKey(Signature.HTTP_HEADER_TIMESTAMP));
@@ -206,7 +222,7 @@ public class RemoteConfigRepositoryTest {
 
         return someResponse;
       }
-    }).when(httpClient).doGet(any(HttpRequest.class), any(Class.class));
+    }).when(httpTransport).doGet(any(HttpTransportRequest.class), eq(getConfigResponseType));
 
     RemoteConfigRepository remoteConfigRepository = new RemoteConfigRepository(someNamespace);
 
@@ -314,11 +330,12 @@ public class RemoteConfigRepositoryTest {
     verify(someListener, times(1)).onRepositoryChange(eq(someNamespace), captor.capture());
     assertEquals(newConfigurations, captor.getValue());
 
-    final ArgumentCaptor<HttpRequest> httpRequestArgumentCaptor = ArgumentCaptor
-        .forClass(HttpRequest.class);
-    verify(httpClient, atLeast(1)).doGet(httpRequestArgumentCaptor.capture(), eq(ApolloConfig.class));
+    final ArgumentCaptor<HttpTransportRequest> httpRequestArgumentCaptor = ArgumentCaptor
+        .forClass(HttpTransportRequest.class);
+    verify(httpTransport, atLeast(1)).doGet(httpRequestArgumentCaptor.capture(),
+        eq(getConfigResponseType));
 
-    HttpRequest request = httpRequestArgumentCaptor.getValue();
+    HttpTransportRequest request = httpRequestArgumentCaptor.getValue();
 
     assertTrue(request.getUrl().contains("messages=%7B%22details%22%3A%7B%22someKey%22%3A1%7D%7D"));
   }
@@ -343,10 +360,26 @@ public class RemoteConfigRepositoryTest {
     ApolloConfig someApolloConfig = mock(ApolloConfig.class);
     when(someApolloConfig.getReleaseKey()).thenReturn(someReleaseKey);
 
-    String queryConfigUrl = remoteConfigRepository
+    String queryConfigUrlOld = remoteConfigRepository
         .assembleQueryConfigUrl(someUri, someAppId, someCluster, someNamespace, null,
             notificationMessages,
             someApolloConfig);
+    Endpoint endpoint = Endpoint.builder()
+        .address(someUri)
+        .build();
+    GetConfigOptions configOptions = remoteConfigRepository.assembleQueryConfigOptions(someAppId,
+        someCluster, someNamespace, null,
+        notificationMessages,
+        someApolloConfig);
+    GetConfigRequest configRequest = GetConfigRequest.builder()
+        .endpoint(endpoint)
+        .options(configOptions)
+        .build();
+    ConfigClientHolder clientHolder = ApolloInjector.getInstance(ConfigClientHolder.class);
+    ConfigClient configClient = clientHolder.getConfigClient();
+    String queryConfigUrl = configClient.traceGetConfig(configRequest);
+
+    assertEquals(queryConfigUrlOld, queryConfigUrl);
 
     assertTrue(queryConfigUrl
         .contains(
@@ -418,25 +451,42 @@ public class RemoteConfigRepositoryTest {
     }
   }
 
-  public static class MockHttpClient implements HttpClient {
+  public static class MockHttpTransport implements HttpTransport {
 
     @Override
-    public <T> HttpResponse<T> doGet(HttpRequest httpRequest, Class<T> responseType) {
-      if (someResponse.getStatusCode() == 200 || someResponse.getStatusCode() == 304) {
-        return (HttpResponse<T>) someResponse;
+    public <T> HttpTransportResponse<T> doGet(HttpTransportRequest httpTransportRequest,
+        TypeReference<T> responseType)
+        throws HttpTransportException, HttpTransportStatusCodeException {
+      if (responseType.equals(RemoteConfigRepositoryTest.getConfigResponseType)) {
+        return this.getConfigResponse();
+      } else if (responseType.equals(RemoteConfigRepositoryTest.watchNotificationsResponseType)) {
+        return this.getNotificationsResponse();
+      } else {
+        throw new IllegalArgumentException("Unsupported response type");
       }
-      throw new ApolloConfigStatusCodeException(someResponse.getStatusCode(),
-              String.format("Http request failed due to status code: %d",
-          someResponse.getStatusCode()));
     }
 
-    @Override
-    public <T> HttpResponse<T> doGet(HttpRequest httpRequest, Type responseType) {
+    private <T> HttpTransportResponse<T> getConfigResponse() {
+      if (someResponse.getStatusCode() == 200 || someResponse.getStatusCode() == 304) {
+        return (HttpTransportResponse<T>) someResponse;
+      }
+      throw new ApolloConfigStatusCodeException(someResponse.getStatusCode(),
+          String.format("Http request failed due to status code: %d",
+              someResponse.getStatusCode()));
+    }
+
+    private <T> HttpTransportResponse<T> getNotificationsResponse() {
       try {
         TimeUnit.MILLISECONDS.sleep(50);
       } catch (InterruptedException e) {
       }
-      return (HttpResponse<T>) pollResponse;
+      return (HttpTransportResponse<T>) pollResponse;
+    }
+
+    @Override
+    public HttpTransportResponse<Void> doGet(HttpTransportRequest httpTransportRequest)
+        throws HttpTransportException, HttpTransportStatusCodeException {
+      throw new UnsupportedOperationException();
     }
   }
 

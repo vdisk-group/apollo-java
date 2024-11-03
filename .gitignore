@@ -27,3 +27,4 @@ target
 *.orig
 .flattened-pom.xml
 
+/apollo-mockserver/src/test/resources/config-cache

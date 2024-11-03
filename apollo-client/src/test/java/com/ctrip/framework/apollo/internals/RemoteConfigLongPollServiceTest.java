@@ -28,20 +28,28 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.build.MockInjector;
+import com.ctrip.framework.apollo.client.v1.api.Endpoint;
+import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsOptions;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsRequest;
+import com.ctrip.framework.apollo.client.v1.http.config.HttpConfigClientTestHelper;
 import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
 import com.ctrip.framework.apollo.core.dto.ApolloNotificationMessages;
 import com.ctrip.framework.apollo.core.dto.ServiceDTO;
+import com.ctrip.framework.apollo.core.http.HttpTransport;
+import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
+import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
+import com.ctrip.framework.apollo.core.http.TypeReference;
 import com.ctrip.framework.apollo.core.signature.Signature;
+import com.ctrip.framework.apollo.spi.ConfigClientHolder;
+import com.ctrip.framework.apollo.spi.MockConfigClientHolder;
 import com.ctrip.framework.apollo.util.ConfigUtil;
-import com.ctrip.framework.apollo.util.http.HttpRequest;
-import com.ctrip.framework.apollo.util.http.HttpResponse;
-import com.ctrip.framework.apollo.util.http.HttpClient;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.net.HttpHeaders;
 import com.google.common.util.concurrent.SettableFuture;
-import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -57,7 +65,6 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
-import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
@@ -66,12 +73,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 public class RemoteConfigLongPollServiceTest {
   private RemoteConfigLongPollService remoteConfigLongPollService;
   @Mock
-  private HttpResponse<List<ApolloConfigNotification>> pollResponse;
+  private HttpTransportResponse<List<ApolloConfigNotification>> pollResponse;
   @Mock
-  private HttpClient httpClient;
+  private HttpTransport httpTransport;
   @Mock
   private ConfigServiceLocator configServiceLocator;
-  private Type responseType;
+  private TypeReference<List<ApolloConfigNotification>> responseType;
 
   private static String someServerUrl;
   private static String someAppId;
@@ -80,7 +87,8 @@ public class RemoteConfigLongPollServiceTest {
 
   @Before
   public void setUp() throws Exception {
-    MockInjector.setInstance(HttpClient.class, httpClient);
+    MockInjector.setInstance(HttpTransport.class, httpTransport);
+    MockInjector.setInstance(ConfigClientHolder.class, new MockConfigClientHolder());
 
     someServerUrl = "http://someServer";
     ServiceDTO serviceDTO = mock(ServiceDTO.class);
@@ -91,9 +99,7 @@ public class RemoteConfigLongPollServiceTest {
     MockInjector.setInstance(ConfigUtil.class, new MockConfigUtil());
 
     remoteConfigLongPollService = new RemoteConfigLongPollService();
-
-    responseType =
-        (Type) ReflectionTestUtils.getField(remoteConfigLongPollService, "m_responseType");
+    responseType = HttpConfigClientTestHelper.getWatchNotificationsResponseType();
 
     someAppId = "someAppId";
     someCluster = "someCluster";
@@ -112,15 +118,16 @@ public class RemoteConfigLongPollServiceTest {
     when(pollResponse.getStatusCode()).thenReturn(HttpServletResponse.SC_NOT_MODIFIED);
     final SettableFuture<Boolean> longPollFinished = SettableFuture.create();
 
-    doAnswer(new Answer<HttpResponse<List<ApolloConfigNotification>>>() {
+    doAnswer(new Answer<HttpTransportResponse<List<ApolloConfigNotification>>>() {
       @Override
-      public HttpResponse<List<ApolloConfigNotification>> answer(InvocationOnMock invocation)
+      public HttpTransportResponse<List<ApolloConfigNotification>> answer(
+          InvocationOnMock invocation)
           throws Throwable {
         try {
           TimeUnit.MILLISECONDS.sleep(50);
         } catch (InterruptedException e) {
         }
-        HttpRequest request = invocation.getArgument(0, HttpRequest.class);
+        HttpTransportRequest request = invocation.getArgument(0, HttpTransportRequest.class);
 
         assertTrue(request.getUrl().contains(someServerUrl + "/notifications/v2?"));
         assertTrue(request.getUrl().contains("appId=" + someAppId));
@@ -131,7 +138,7 @@ public class RemoteConfigLongPollServiceTest {
         longPollFinished.set(true);
         return pollResponse;
       }
-    }).when(httpClient).doGet(any(HttpRequest.class), eq(responseType));
+    }).when(httpTransport).doGet(any(HttpTransportRequest.class), eq(responseType));
 
     remoteConfigLongPollService.submit(someNamespace, someRepository);
 
@@ -162,9 +169,10 @@ public class RemoteConfigLongPollServiceTest {
     when(pollResponse.getStatusCode()).thenReturn(HttpServletResponse.SC_OK);
     when(pollResponse.getBody()).thenReturn(Lists.newArrayList(someNotification));
 
-    doAnswer(new Answer<HttpResponse<List<ApolloConfigNotification>>>() {
+    doAnswer(new Answer<HttpTransportResponse<List<ApolloConfigNotification>>>() {
       @Override
-      public HttpResponse<List<ApolloConfigNotification>> answer(InvocationOnMock invocation)
+      public HttpTransportResponse<List<ApolloConfigNotification>> answer(
+          InvocationOnMock invocation)
           throws Throwable {
         try {
           TimeUnit.MILLISECONDS.sleep(50);
@@ -173,7 +181,7 @@ public class RemoteConfigLongPollServiceTest {
 
         return pollResponse;
       }
-    }).when(httpClient).doGet(any(HttpRequest.class), eq(responseType));
+    }).when(httpTransport).doGet(any(HttpTransportRequest.class), eq(responseType));
 
     final SettableFuture<Boolean> onNotified = SettableFuture.create();
     doAnswer(new Answer<Void>() {
@@ -217,16 +225,17 @@ public class RemoteConfigLongPollServiceTest {
     when(pollResponse.getStatusCode()).thenReturn(HttpServletResponse.SC_OK);
     when(pollResponse.getBody()).thenReturn(Lists.newArrayList(someNotification));
 
-    doAnswer(new Answer<HttpResponse<List<ApolloConfigNotification>>>() {
+    doAnswer(new Answer<HttpTransportResponse<List<ApolloConfigNotification>>>() {
       @Override
-      public HttpResponse<List<ApolloConfigNotification>> answer(InvocationOnMock invocation)
+      public HttpTransportResponse<List<ApolloConfigNotification>> answer(
+          InvocationOnMock invocation)
           throws Throwable {
         try {
           TimeUnit.MILLISECONDS.sleep(50);
         } catch (InterruptedException e) {
         }
 
-        HttpRequest request = invocation.getArgument(0, HttpRequest.class);
+        HttpTransportRequest request = invocation.getArgument(0, HttpTransportRequest.class);
 
         Map<String, String> headers = request.getHeaders();
         assertNotNull(headers);
@@ -235,7 +244,7 @@ public class RemoteConfigLongPollServiceTest {
 
         return pollResponse;
       }
-    }).when(httpClient).doGet(any(HttpRequest.class), eq(responseType));
+    }).when(httpTransport).doGet(any(HttpTransportRequest.class), eq(responseType));
 
     final SettableFuture<Boolean> onNotified = SettableFuture.create();
     doAnswer(new Answer<Void>() {
@@ -269,11 +278,12 @@ public class RemoteConfigLongPollServiceTest {
     final SettableFuture<Boolean> submitAnotherNamespaceStart = SettableFuture.create();
     final SettableFuture<Boolean> submitAnotherNamespaceFinish = SettableFuture.create();
 
-    doAnswer(new Answer<HttpResponse<List<ApolloConfigNotification>>>() {
+    doAnswer(new Answer<HttpTransportResponse<List<ApolloConfigNotification>>>() {
       final AtomicInteger counter = new AtomicInteger();
 
       @Override
-      public HttpResponse<List<ApolloConfigNotification>> answer(InvocationOnMock invocation)
+      public HttpTransportResponse<List<ApolloConfigNotification>> answer(
+          InvocationOnMock invocation)
           throws Throwable {
         try {
           TimeUnit.MILLISECONDS.sleep(50);
@@ -282,7 +292,7 @@ public class RemoteConfigLongPollServiceTest {
 
         //the first time
         if (counter.incrementAndGet() == 1) {
-          HttpRequest request = invocation.getArgument(0, HttpRequest.class);
+          HttpTransportRequest request = invocation.getArgument(0, HttpTransportRequest.class);
 
           assertTrue(request.getUrl().contains("notifications="));
           assertTrue(request.getUrl().contains(someNamespace));
@@ -292,7 +302,7 @@ public class RemoteConfigLongPollServiceTest {
           when(pollResponse.getStatusCode()).thenReturn(HttpServletResponse.SC_OK);
           when(pollResponse.getBody()).thenReturn(Lists.newArrayList(someNotification));
         } else if (submitAnotherNamespaceFinish.get()) {
-          HttpRequest request = invocation.getArgument(0, HttpRequest.class);
+          HttpTransportRequest request = invocation.getArgument(0, HttpTransportRequest.class);
           assertTrue(request.getUrl().contains("notifications="));
           assertTrue(request.getUrl().contains(someNamespace));
           assertTrue(request.getUrl().contains(anotherNamespace));
@@ -306,7 +316,7 @@ public class RemoteConfigLongPollServiceTest {
 
         return pollResponse;
       }
-    }).when(httpClient).doGet(any(HttpRequest.class), eq(responseType));
+    }).when(httpTransport).doGet(any(HttpTransportRequest.class), eq(responseType));
 
     final SettableFuture<Boolean> onAnotherRepositoryNotified = SettableFuture.create();
     doAnswer(new Answer<Void>() {
@@ -358,9 +368,10 @@ public class RemoteConfigLongPollServiceTest {
     when(pollResponse.getStatusCode()).thenReturn(HttpServletResponse.SC_OK);
     when(pollResponse.getBody()).thenReturn(Lists.newArrayList(someNotification, anotherNotification));
 
-    doAnswer(new Answer<HttpResponse<List<ApolloConfigNotification>>>() {
+    doAnswer(new Answer<HttpTransportResponse<List<ApolloConfigNotification>>>() {
       @Override
-      public HttpResponse<List<ApolloConfigNotification>> answer(InvocationOnMock invocation)
+      public HttpTransportResponse<List<ApolloConfigNotification>> answer(
+          InvocationOnMock invocation)
           throws Throwable {
         try {
           TimeUnit.MILLISECONDS.sleep(50);
@@ -369,7 +380,7 @@ public class RemoteConfigLongPollServiceTest {
 
         return pollResponse;
       }
-    }).when(httpClient).doGet(any(HttpRequest.class), eq(responseType));
+    }).when(httpTransport).doGet(any(HttpTransportRequest.class), eq(responseType));
 
     final SettableFuture<Boolean> someRepositoryNotified = SettableFuture.create();
     doAnswer(new Answer<Void>() {
@@ -427,9 +438,10 @@ public class RemoteConfigLongPollServiceTest {
     when(pollResponse.getStatusCode()).thenReturn(HttpServletResponse.SC_OK);
     when(pollResponse.getBody()).thenReturn(Lists.newArrayList(someNotification));
 
-    doAnswer(new Answer<HttpResponse<List<ApolloConfigNotification>>>() {
+    doAnswer(new Answer<HttpTransportResponse<List<ApolloConfigNotification>>>() {
       @Override
-      public HttpResponse<List<ApolloConfigNotification>> answer(InvocationOnMock invocation)
+      public HttpTransportResponse<List<ApolloConfigNotification>> answer(
+          InvocationOnMock invocation)
           throws Throwable {
         try {
           TimeUnit.MILLISECONDS.sleep(50);
@@ -438,7 +450,7 @@ public class RemoteConfigLongPollServiceTest {
 
         return pollResponse;
       }
-    }).when(httpClient).doGet(any(HttpRequest.class), eq(responseType));
+    }).when(httpTransport).doGet(any(HttpTransportRequest.class), eq(responseType));
 
     final SettableFuture<Boolean> onNotified = SettableFuture.create();
     doAnswer(new Answer<Void>() {
@@ -502,9 +514,23 @@ public class RemoteConfigLongPollServiceTest {
     long someNotificationId = 1;
     Map<String, Long> notificationsMap = ImmutableMap.of(someNamespace, someNotificationId);
 
-    String longPollRefreshUrl =
+    String longPollRefreshUrlOld =
         remoteConfigLongPollService
             .assembleLongPollRefreshUrl(someUri, someAppId, someCluster, null, notificationsMap);
+    Endpoint endpoint = Endpoint.builder()
+        .address(someUri)
+        .build();
+    WatchNotificationsOptions watchOptions = remoteConfigLongPollService.assembleLongPollRefreshOptions(
+        someAppId, someCluster, null, notificationsMap, null);
+    WatchNotificationsRequest watchRequest = WatchNotificationsRequest.builder()
+        .endpoint(endpoint)
+        .options(watchOptions)
+        .build();
+    ConfigClientHolder clientHolder = ApolloInjector.getInstance(ConfigClientHolder.class);
+    ConfigClient configClient = clientHolder.getConfigClient();
+    String longPollRefreshUrl = configClient.traceWatch(watchRequest);
+
+    assertEquals(longPollRefreshUrlOld, longPollRefreshUrl);
 
     assertTrue(longPollRefreshUrl.contains(someServerUrl + "/notifications/v2?"));
     assertTrue(longPollRefreshUrl.contains("appId=" + someAppId));
@@ -527,9 +553,23 @@ public class RemoteConfigLongPollServiceTest {
     Map<String, Long> notificationsMap =
         ImmutableMap.of(someNamespace, someNotificationId, anotherNamespace, anotherNotificationId);
 
-    String longPollRefreshUrl =
+    String longPollRefreshUrlOld =
         remoteConfigLongPollService
             .assembleLongPollRefreshUrl(someUri, someAppId, someCluster, null, notificationsMap);
+    Endpoint endpoint = Endpoint.builder()
+        .address(someUri)
+        .build();
+    WatchNotificationsOptions watchOptions = remoteConfigLongPollService.assembleLongPollRefreshOptions(
+        someAppId, someCluster, null, notificationsMap, null);
+    WatchNotificationsRequest watchRequest = WatchNotificationsRequest.builder()
+        .endpoint(endpoint)
+        .options(watchOptions)
+        .build();
+    ConfigClientHolder clientHolder = ApolloInjector.getInstance(ConfigClientHolder.class);
+    ConfigClient configClient = clientHolder.getConfigClient();
+    String longPollRefreshUrl = configClient.traceWatch(watchRequest);
+
+    assertEquals(longPollRefreshUrlOld, longPollRefreshUrl);
 
     assertTrue(longPollRefreshUrl.contains(someServerUrl + "/notifications/v2?"));
     assertTrue(longPollRefreshUrl.contains("appId=" + someAppId));

@@ -77,6 +77,7 @@ public class ConfigUtil {
   private String monitorExternalType = "NONE";
   private long monitorExternalExportPeriod = 10;
   private int monitorExceptionQueueSize = 25;
+  private String clientType = "http";
 
   public ConfigUtil() {
     warnLogRateLimiter = RateLimiter.create(0.017); // 1 warning log output per minute
@@ -98,6 +99,7 @@ public class ConfigUtil {
     initClientMonitorExternalType();
     initClientMonitorExternalExportPeriod();
     initClientMonitorExceptionQueueSize();
+    initClientType();
   }
 
   /**
@@ -517,6 +519,10 @@ public class ConfigUtil {
     return overrideSystemProperties;
   }
 
+  public String getClientType() {
+    return this.clientType;
+  }
+
   private void initPropertyNamesCacheEnabled() {
     propertyNamesCacheEnabled = getPropertyBoolean(ApolloClientSystemConsts.APOLLO_PROPERTY_NAMES_CACHE_ENABLE,
             ApolloClientSystemConsts.APOLLO_PROPERTY_NAMES_CACHE_ENABLE_ENVIRONMENT_VARIABLES,
@@ -606,7 +612,32 @@ public class ConfigUtil {
   public int getMonitorExceptionQueueSize() {
     return monitorExceptionQueueSize;
   }
-  
+
+  private void initClientType() {
+    String customizedClientType = getCustomizedClientType();
+    if (!Strings.isNullOrEmpty(customizedClientType)) {
+      clientType = customizedClientType;
+    }
+  }
+
+  private String getCustomizedClientType() {
+    String clientTypeSystemProperty = System.getProperty(
+        ApolloClientSystemConsts.APOLLO_CLIENT_TYPE);
+    if (!Strings.isNullOrEmpty(clientTypeSystemProperty)) {
+      return clientTypeSystemProperty;
+    }
+    String clientTypeAppProperty = Foundation.app()
+        .getProperty(ApolloClientSystemConsts.APOLLO_CLIENT_TYPE, null);
+    if (!Strings.isNullOrEmpty(clientTypeAppProperty)) {
+      return clientTypeAppProperty;
+    }
+    String clientTypeEnv = System.getenv(ApolloClientSystemConsts.APOLLO_CLIENT_TYPE_ENVIRONMENT_VARIABLES);
+    if (!Strings.isNullOrEmpty(clientTypeEnv)) {
+      return clientTypeEnv;
+    }
+    return null;
+  }
+
   private boolean getPropertyBoolean(String propertyName, String envName, boolean defaultVal) {
     String enablePropertyNamesCache = System.getProperty(propertyName);
     if (Strings.isNullOrEmpty(enablePropertyNamesCache)) {
