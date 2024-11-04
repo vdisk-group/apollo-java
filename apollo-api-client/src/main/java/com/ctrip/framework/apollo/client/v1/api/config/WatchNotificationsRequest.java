@@ -16,34 +16,31 @@
  */
 package com.ctrip.framework.apollo.client.v1.api.config;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.StringJoiner;
+import java.util.Objects;
+
+import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 
 public class WatchNotificationsRequest {
 
-  private final String appId;
+  /**
+   * config server
+   */
+  private final Endpoint endpoint;
 
-  private final String cluster;
-
-  private final List<NotificationDefinition> notifications;
-
-  private final String dataCenter;
-
-  private final String clientIp;
-
-  private final String label;
-
-  private final String accessKeySecret;
+  /**
+   * interested notifications
+   */
+  private final WatchNotificationsOptions options;
 
   WatchNotificationsRequest(Builder builder) {
-    this.appId = builder.appId;
-    this.cluster = builder.cluster;
-    this.notifications = builder.notifications;
-    this.dataCenter = builder.dataCenter;
-    this.clientIp = builder.clientIp;
-    this.label = builder.label;
-    this.accessKeySecret = builder.accessKeySecret;
+    WatchNotificationsRequest.validateBuilder(builder);
+    this.endpoint = builder.endpoint;
+    this.options = builder.options;
+  }
+
+  private static void validateBuilder(Builder builder) {
+    Objects.requireNonNull(builder.endpoint, "endpoint");
+    Objects.requireNonNull(builder.options, "options");
   }
 
   public static Builder builder() {
@@ -52,107 +49,34 @@ public class WatchNotificationsRequest {
 
   public Builder toBuilder() {
     Builder builder = new Builder();
-    builder.appId = this.appId;
-    builder.cluster = this.cluster;
-    builder.notifications = this.notifications;
-    builder.dataCenter = this.dataCenter;
-    builder.clientIp = this.clientIp;
-    builder.label = this.label;
-    builder.accessKeySecret = this.accessKeySecret;
+    builder.endpoint = this.endpoint;
+    builder.options = this.options;
     return builder;
   }
 
-  public String getAppId() {
-    return this.appId;
+  public Endpoint getEndpoint() {
+    return this.endpoint;
   }
 
-  public String getCluster() {
-    return this.cluster;
-  }
-
-  public List<NotificationDefinition> getNotifications() {
-    return this.notifications;
-  }
-
-  public String getDataCenter() {
-    return this.dataCenter;
-  }
-
-  public String getClientIp() {
-    return this.clientIp;
-  }
-
-  public String getLabel() {
-    return this.label;
-  }
-
-  public String getAccessKeySecret() {
-    return this.accessKeySecret;
-  }
-
-  @Override
-  public String toString() {
-    return new StringJoiner(", ",
-        WatchNotificationsRequest.class.getSimpleName() + "[", "]")
-        // fields
-        .add("appId='" + this.appId + "'")
-        .add("cluster='" + this.cluster + "'")
-        .add("notifications=" + this.notifications)
-        .add("dataCenter='" + this.dataCenter + "'")
-        .add("clientIp='" + this.clientIp + "'")
-        .add("label='" + this.label + "'")
-        .add("accessKeySecret='" + this.accessKeySecret + "'")
-        .toString();
+  public WatchNotificationsOptions getOptions() {
+    return this.options;
   }
 
   public static final class Builder {
 
-    private String appId;
-    private String cluster;
-    private List<NotificationDefinition> notifications;
-    private String dataCenter;
-    private String clientIp;
-    private String label;
-    private String accessKeySecret;
+    private Endpoint endpoint;
+    private WatchNotificationsOptions options;
 
     Builder() {
     }
 
-    public Builder appId(String appId) {
-      this.appId = appId;
+    public Builder endpoint(Endpoint endpoint) {
+      this.endpoint = endpoint;
       return this;
     }
 
-    public Builder cluster(String cluster) {
-      this.cluster = cluster;
-      return this;
-    }
-
-    public Builder notifications(List<NotificationDefinition> notifications) {
-      this.notifications = notifications == null ? null :
-          // nonnull
-          (notifications.isEmpty() ? Collections.emptyList()
-              : Collections.unmodifiableList(notifications));
-      return this;
-    }
-
-    public Builder dataCenter(String dataCenter) {
-      this.dataCenter = dataCenter;
-      return this;
-    }
-
-    public Builder clientIp(String clientIp) {
-      this.clientIp = clientIp;
-      return this;
-    }
-
-    public Builder label(String label) {
-      this.label = label;
-      return this;
-    }
-
-    public Builder accessKeySecret(String accessKeySecret) {
-      this.accessKeySecret = accessKeySecret;
+    public Builder options(WatchNotificationsOptions options) {
+      this.options = options;
       return this;
     }
 

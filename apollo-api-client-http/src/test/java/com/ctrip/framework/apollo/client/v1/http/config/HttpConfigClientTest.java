@@ -18,6 +18,7 @@ package com.ctrip.framework.apollo.client.v1.http.config;
 
 import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
+import com.ctrip.framework.apollo.client.v1.api.config.GetConfigOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigRequest;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigResponse;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigResult;
@@ -25,6 +26,7 @@ import com.ctrip.framework.apollo.client.v1.api.config.GetConfigStatus;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationDefinition;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationMessages;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationResult;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsRequest;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsResponse;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsStatus;
@@ -81,7 +83,11 @@ class HttpConfigClientTest {
         .address("http://localhost:" + this.port)
         .build();
 
-    WatchNotificationsRequest request = this.createWatchRequest();
+    WatchNotificationsOptions options = this.createWatchRequest();
+    WatchNotificationsRequest request = WatchNotificationsRequest.builder()
+        .endpoint(endpoint)
+        .options(options)
+        .build();
 
     WatchNotificationsResponse response;
     PollNotificationRequest lastRequest;
@@ -89,14 +95,14 @@ class HttpConfigClientTest {
     clientLock.lock();
     try {
       this.setUpWatchResponse(request);
-      response = client.watch(endpoint, request);
+      response = client.watch(request);
       lastRequest = NotificationControllerV2Test.getRequest();
     } finally {
       clientLock.unlock();
     }
 
     Assertions.assertNotNull(response);
-    List<NotificationDefinition> notifications = request.getNotifications();
+    List<NotificationDefinition> notifications = options.getNotifications();
     List<NotificationResult> serverNotifications = response.getNotifications();
     Assertions.assertEquals(notifications.size(), serverNotifications.size());
     NotificationDefinition notification = notifications.get(0);
@@ -129,15 +135,17 @@ class HttpConfigClientTest {
 
   private static void assertWatchRequest(WatchNotificationsRequest request,
       PollNotificationRequest lastRequest) {
-    List<NotificationDefinition> notifications = request.getNotifications();
+    WatchNotificationsOptions options = request.getOptions();
+
+    List<NotificationDefinition> notifications = options.getNotifications();
     NotificationDefinition notification = notifications.get(0);
     Assertions.assertNotNull(lastRequest);
-    Assertions.assertEquals(request.getAppId(), lastRequest.getAppId());
-    Assertions.assertEquals(request.getCluster(), lastRequest.getCluster());
-    Assertions.assertEquals(request.getDataCenter(), lastRequest.getDataCenter());
+    Assertions.assertEquals(options.getAppId(), lastRequest.getAppId());
+    Assertions.assertEquals(options.getCluster(), lastRequest.getCluster());
+    Assertions.assertEquals(options.getDataCenter(), lastRequest.getDataCenter());
     List<ApolloConfigNotification> lastRequestNotifications = lastRequest.getNotifications();
     Assertions.assertEquals(notifications.size(), lastRequestNotifications.size());
-    Assertions.assertEquals(request.getClientIp(), lastRequest.getClientIp());
+    Assertions.assertEquals(options.getClientIp(), lastRequest.getClientIp());
     ApolloConfigNotification lastRequestNotification = lastRequestNotifications.get(0);
     Assertions.assertEquals(notification.getNamespaceName(),
         lastRequestNotification.getNamespaceName());
@@ -145,14 +153,14 @@ class HttpConfigClientTest {
         lastRequestNotification.getNotificationId());
   }
 
-  private WatchNotificationsRequest createWatchRequest() {
+  private WatchNotificationsOptions createWatchRequest() {
     List<NotificationDefinition> notifications = new ArrayList<>();
     NotificationDefinition notification = NotificationDefinition.builder()
         .namespaceName("someNamespace")
         .notificationId(1L)
         .build();
     notifications.add(notification);
-    return WatchNotificationsRequest.builder()
+    return WatchNotificationsOptions.builder()
         .appId("someAppId")
         .cluster("someCluster")
         .notifications(notifications)
@@ -162,7 +170,9 @@ class HttpConfigClientTest {
   }
 
   private void setUpWatchResponse(WatchNotificationsRequest request) {
-    List<NotificationDefinition> clientNotifications = request.getNotifications();
+    WatchNotificationsOptions options = request.getOptions();
+
+    List<NotificationDefinition> clientNotifications = options.getNotifications();
     List<ApolloConfigNotification> serverNotifications = new ArrayList<>();
     for (NotificationDefinition clientNotification : clientNotifications) {
       serverNotifications.add(new ApolloConfigNotification(clientNotification.getNamespaceName(),
@@ -174,13 +184,17 @@ class HttpConfigClientTest {
 
   @Test
   void watch_not_modified() {
-    ConfigClient client = createClient();
+    ConfigClient client = this.createClient();
 
     Endpoint endpoint = Endpoint.builder()
         .address("http://localhost:" + this.port)
         .build();
 
-    WatchNotificationsRequest request = this.createWatchRequest();
+    WatchNotificationsOptions options = this.createWatchRequest();
+    WatchNotificationsRequest request = WatchNotificationsRequest.builder()
+        .endpoint(endpoint)
+        .options(options)
+        .build();
 
     WatchNotificationsResponse response;
     PollNotificationRequest lastRequest;
@@ -188,7 +202,7 @@ class HttpConfigClientTest {
     clientLock.lock();
     try {
       this.setUpWatchResponse_not_modified(request);
-      response = client.watch(endpoint, request);
+      response = client.watch(request);
       lastRequest = NotificationControllerV2Test.getRequest();
     } finally {
       clientLock.unlock();
@@ -208,7 +222,7 @@ class HttpConfigClientTest {
 
   @Test
   void get_ok() {
-    ConfigClient client = createClient();
+    ConfigClient client = this.createClient();
 
     Endpoint endpoint = Endpoint.builder()
         .address("http://localhost:" + this.port)
@@ -221,7 +235,7 @@ class HttpConfigClientTest {
         .details(details)
         .build();
 
-    GetConfigRequest request = GetConfigRequest.builder()
+    GetConfigOptions options = GetConfigOptions.builder()
         .appId("someAppId")
         .cluster("someCluster")
         .namespace("someNamespace")
@@ -231,6 +245,10 @@ class HttpConfigClientTest {
         .label("someLabel")
         .messages(messages)
         .build();
+    GetConfigRequest request = GetConfigRequest.builder()
+        .endpoint(endpoint)
+        .options(options)
+        .build();
 
     ReentrantLock clientLock = ConfigControllerTest.getClientLock();
     GetConfigResponse response;
@@ -238,7 +256,7 @@ class HttpConfigClientTest {
     clientLock.lock();
     try {
       this.setUpGetResponse(request);
-      response = client.getConfig(endpoint, request);
+      response = client.getConfig(request);
       lastRequest = ConfigControllerTest.getRequest();
     } finally {
       clientLock.unlock();
@@ -260,16 +278,18 @@ class HttpConfigClientTest {
   }
 
   private void setUpGetResponse(GetConfigRequest request) {
+    GetConfigOptions options = request.getOptions();
+
     Map<String, String> configurations = new LinkedHashMap<>();
     configurations.put("someKey1", "value1");
     configurations.put("someKey2", "value2");
 
     ApolloConfig config = new ApolloConfig();
-    config.setAppId(request.getAppId());
-    config.setCluster(request.getCluster());
-    config.setNamespaceName(request.getNamespace());
+    config.setAppId(options.getAppId());
+    config.setCluster(options.getCluster());
+    config.setNamespaceName(options.getNamespace());
     config.setConfigurations(configurations);
-    config.setReleaseKey(request.getReleaseKey());
+    config.setReleaseKey(options.getReleaseKey());
 
     ConfigControllerTest.setResponse(ResponseEntity.ok()
         .body(config));
@@ -277,15 +297,17 @@ class HttpConfigClientTest {
 
   private static void assertConfigRequest(GetConfigRequest request,
       QueryConfigRequest lastRequest) {
+    GetConfigOptions options = request.getOptions();
+
     Assertions.assertNotNull(lastRequest);
-    Assertions.assertEquals(request.getAppId(), lastRequest.getAppId());
-    Assertions.assertEquals(request.getCluster(), lastRequest.getCluster());
-    Assertions.assertEquals(request.getNamespace(), lastRequest.getNamespace());
-    Assertions.assertEquals(request.getReleaseKey(), lastRequest.getReleaseKey());
-    Assertions.assertEquals(request.getDataCenter(), lastRequest.getDataCenter());
-    Assertions.assertEquals(request.getClientIp(), lastRequest.getClientIp());
-    Assertions.assertEquals(request.getLabel(), lastRequest.getLabel());
-    NotificationMessages messages = request.getMessages();
+    Assertions.assertEquals(options.getAppId(), lastRequest.getAppId());
+    Assertions.assertEquals(options.getCluster(), lastRequest.getCluster());
+    Assertions.assertEquals(options.getNamespace(), lastRequest.getNamespace());
+    Assertions.assertEquals(options.getReleaseKey(), lastRequest.getReleaseKey());
+    Assertions.assertEquals(options.getDataCenter(), lastRequest.getDataCenter());
+    Assertions.assertEquals(options.getClientIp(), lastRequest.getClientIp());
+    Assertions.assertEquals(options.getLabel(), lastRequest.getLabel());
+    NotificationMessages messages = options.getMessages();
     ApolloNotificationMessages lastRequestMessages = lastRequest.getMessages();
     Assertions.assertNotNull(lastRequestMessages);
     Map<String, Long> details = messages.getDetails();
@@ -299,7 +321,7 @@ class HttpConfigClientTest {
 
   @Test
   void get_not_modified() {
-    ConfigClient client = createClient();
+    ConfigClient client = this.createClient();
 
     Endpoint endpoint = Endpoint.builder()
         .address("http://localhost:" + this.port)
@@ -312,7 +334,7 @@ class HttpConfigClientTest {
         .details(details)
         .build();
 
-    GetConfigRequest request = GetConfigRequest.builder()
+    GetConfigOptions options = GetConfigOptions.builder()
         .appId("someAppId")
         .cluster("someCluster")
         .namespace("someNamespace")
@@ -322,6 +344,10 @@ class HttpConfigClientTest {
         .label("someLabel")
         .messages(messages)
         .build();
+    GetConfigRequest request = GetConfigRequest.builder()
+        .endpoint(endpoint)
+        .options(options)
+        .build();
 
     ReentrantLock clientLock = ConfigControllerTest.getClientLock();
     GetConfigResponse response;
@@ -329,7 +355,7 @@ class HttpConfigClientTest {
     clientLock.lock();
     try {
       this.setUpGetResponse_not_modified(request);
-      response = client.getConfig(endpoint, request);
+      response = client.getConfig(request);
       lastRequest = ConfigControllerTest.getRequest();
     } finally {
       clientLock.unlock();

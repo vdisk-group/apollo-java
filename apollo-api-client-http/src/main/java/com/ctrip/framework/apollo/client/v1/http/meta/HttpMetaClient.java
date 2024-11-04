@@ -18,6 +18,7 @@ package com.ctrip.framework.apollo.client.v1.http.meta;
 
 import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.meta.ConfigServiceInstance;
+import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryOptions;
 import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryRequest;
 import com.ctrip.framework.apollo.client.v1.api.meta.MetaClient;
 import com.ctrip.framework.apollo.client.v1.api.meta.MetaException;
@@ -58,14 +59,17 @@ public class HttpMetaClient implements MetaClient {
   }
 
   @Override
-  public String traceGetServices(Endpoint endpoint, DiscoveryRequest request) {
-    return this.toGetServicesUri(endpoint, request);
+  public String traceGetServices(DiscoveryRequest request) {
+    return this.toGetServicesUri(request);
   }
 
-  private String toGetServicesUri(Endpoint endpoint, DiscoveryRequest request) {
+  private String toGetServicesUri(DiscoveryRequest request) {
+    Endpoint endpoint = request.getEndpoint();
+    DiscoveryOptions options = request.getOptions();
+
     Map<String, String> queryParams = Maps.newHashMap();
-    queryParams.put("appId", request.getAppId());
-    String clientIp = request.getClientIp();
+    queryParams.put("appId", options.getAppId());
+    String clientIp = options.getClientIp();
     if (!Strings.isNullOrEmpty(clientIp)) {
       queryParams.put("ip", clientIp);
     }
@@ -78,8 +82,8 @@ public class HttpMetaClient implements MetaClient {
   }
 
   @Override
-  public List<ConfigServiceInstance> getServices(Endpoint endpoint, DiscoveryRequest request) {
-    HttpTransportRequest httpTransportRequest = this.toGetServicesHttpRequest(endpoint, request);
+  public List<ConfigServiceInstance> getServices(DiscoveryRequest request) {
+    HttpTransportRequest httpTransportRequest = this.toGetServicesHttpRequest(request);
     HttpTransportResponse<List<ServiceDTO>> httpTransportResponse = this.doGetInternal(
         "Get config services",
         () -> this.httpTransport.doGet(httpTransportRequest, GET_SERVICES_RESPONSE_TYPE));
@@ -97,9 +101,9 @@ public class HttpMetaClient implements MetaClient {
     return Collections.unmodifiableList(configServiceInstanceList);
   }
 
-  private HttpTransportRequest toGetServicesHttpRequest(Endpoint endpoint,
+  private HttpTransportRequest toGetServicesHttpRequest(
       DiscoveryRequest request) {
-    String uri = this.toGetServicesUri(endpoint, request);
+    String uri = this.toGetServicesUri(request);
     return HttpTransportRequest.builder().url(uri)
         .connectTimeout(this.properties.getDiscoveryConnectTimeout())
         .readTimeout(this.properties.getDiscoveryReadTimeout()).build();

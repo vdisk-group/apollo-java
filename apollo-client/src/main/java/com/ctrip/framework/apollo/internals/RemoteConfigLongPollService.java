@@ -23,6 +23,7 @@ import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationDefinition;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationMessages;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationResult;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsRequest;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsResponse;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsStatus;
@@ -182,16 +183,20 @@ public class RemoteConfigLongPollService {
         Endpoint endpoint = Endpoint.builder()
             .address(lastServiceDto.getHomepageUrl())
             .build();
-        WatchNotificationsRequest watchRequest = assembleLongPollRefreshRequest(appId, cluster,
+        WatchNotificationsOptions watchOptions = assembleLongPollRefreshOptions(appId, cluster,
             dataCenter,
             m_notifications, secret);
-        url = configClient.traceWatch(endpoint, watchRequest);
+        WatchNotificationsRequest watchRequest = WatchNotificationsRequest.builder()
+            .endpoint(endpoint)
+            .options(watchOptions)
+            .build();
+        url = configClient.traceWatch(watchRequest);
 
         logger.debug("Long polling from {}", url);
 
         transaction.addData("Url", url);
 
-        WatchNotificationsResponse watchResponse = configClient.watch(endpoint, watchRequest);
+        WatchNotificationsResponse watchResponse = configClient.watch(watchRequest);
 
         logger.debug("Long polling response: {}, url: {}", watchResponse.getStatus().getCode(),
             url);
@@ -316,14 +321,14 @@ public class RemoteConfigLongPollService {
     return STRING_JOINER.join(m_longPollNamespaces.keySet());
   }
 
-  WatchNotificationsRequest assembleLongPollRefreshRequest(String appId, String cluster,
+  WatchNotificationsOptions assembleLongPollRefreshOptions(String appId, String cluster,
       String dataCenter,
       Map<String, Long> notificationsMap, String secret) {
     List<NotificationDefinition> notifications = this.toNotificationDefinitions(notificationsMap);
 
     String localIp = this.m_configUtil.getLocalIp();
     String label = this.m_configUtil.getApolloLabel();
-    return WatchNotificationsRequest.builder()
+    return WatchNotificationsOptions.builder()
         .appId(appId)
         .cluster(cluster)
         .notifications(notifications)

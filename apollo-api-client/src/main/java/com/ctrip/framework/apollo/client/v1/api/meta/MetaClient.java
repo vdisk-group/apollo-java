@@ -16,7 +16,6 @@
  */
 package com.ctrip.framework.apollo.client.v1.api.meta;
 
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import java.util.List;
 
 public interface MetaClient {
@@ -24,18 +23,16 @@ public interface MetaClient {
   /**
    * trace url for discovery services
    *
-   * @param endpoint server address
-   * @param request  discovery requests
+   * @param request  discovery request
    * @return trace url
    */
-  String traceGetServices(Endpoint endpoint, DiscoveryRequest request);
+  String traceGetServices(DiscoveryRequest request);
 
   /**
    * discovery services
    *
-   * @param endpoint server address
-   * @param request  discovery requests
+   * @param request  discovery request
    * @return services
    */
-  List<ConfigServiceInstance> getServices(Endpoint endpoint, DiscoveryRequest request);
+  List<ConfigServiceInstance> getServices(DiscoveryRequest request);
 }

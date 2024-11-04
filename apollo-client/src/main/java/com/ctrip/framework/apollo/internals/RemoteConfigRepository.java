@@ -23,6 +23,7 @@ import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigNotFoundException;
+import com.ctrip.framework.apollo.client.v1.api.config.GetConfigOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigRequest;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigResponse;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigResult;
@@ -232,9 +233,13 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
         Endpoint endpoint = Endpoint.builder()
             .address(configService.getHomepageUrl())
             .build();
-        GetConfigRequest configRequest = assembleQueryConfigRequest(appId, cluster, m_namespace,
+        GetConfigOptions configOptions = assembleQueryConfigOptions(appId, cluster, m_namespace,
             dataCenter, m_remoteMessages.get(), m_configCache.get());
-        url = configClient.traceGetConfig(endpoint, configRequest);
+        GetConfigRequest configRequest = GetConfigRequest.builder()
+            .endpoint(endpoint)
+            .options(configOptions)
+            .build();
+        url = configClient.traceGetConfig(configRequest);
 
         logger.debug("Loading config from {}", url);
 
@@ -242,7 +247,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
         transaction.addData("Url", url);
         try {
 
-          GetConfigResponse configResponse = configClient.getConfig(endpoint, configRequest);
+          GetConfigResponse configResponse = configClient.getConfig(configRequest);
           m_configNeedForceRefresh.set(false);
           m_loadConfigFailSchedulePolicy.success();
 
@@ -292,14 +297,14 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
     throw new ApolloConfigException(message, exception);
   }
 
-  GetConfigRequest assembleQueryConfigRequest(String appId, String cluster, String namespace,
+  GetConfigOptions assembleQueryConfigOptions(String appId, String cluster, String namespace,
       String dataCenter, ApolloNotificationMessages remoteMessages, ApolloConfig previousConfig) {
     String releaseKey = previousConfig != null ? previousConfig.getReleaseKey() : null;
     String localIp = m_configUtil.getLocalIp();
     String label = m_configUtil.getApolloLabel();
     NotificationMessages notificationMessages = this.toNotificationMessages(remoteMessages);
     String secret = m_configUtil.getAccessKeySecret();
-    return GetConfigRequest.builder()
+    return GetConfigOptions.builder()
         .appId(appId)
         .cluster(cluster)
         .namespace(namespace)

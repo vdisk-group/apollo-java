@@ -17,17 +17,27 @@
 package com.ctrip.framework.apollo.client.v1.api.meta;
 
 
-import java.util.StringJoiner;
+import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 
 public class DiscoveryRequest {
 
-  private final String appId;
+  /**
+   * meta server
+   */
+  private final Endpoint endpoint;
 
-  private final String clientIp;
+  /**
+   * discovery options
+   */
+  private final DiscoveryOptions options;
 
   DiscoveryRequest(Builder builder) {
-    this.appId = builder.appId;
-    this.clientIp = builder.clientIp;
+    DiscoveryRequest.validateBuilder(builder);
+    this.endpoint = builder.endpoint;
+    this.options = builder.options;
+  }
+
+  private static void validateBuilder(Builder builder) {
   }
 
   public static Builder builder() {
@@ -36,43 +46,34 @@ public class DiscoveryRequest {
 
   public Builder toBuilder() {
     Builder builder = new Builder();
-    builder.appId = this.appId;
-    builder.clientIp = this.clientIp;
+    builder.endpoint = this.endpoint;
+    builder.options = this.options;
     return builder;
   }
 
-  public String getAppId() {
-    return this.appId;
+  public Endpoint getEndpoint() {
+    return this.endpoint;
   }
 
-  public String getClientIp() {
-    return this.clientIp;
-  }
-
-  @Override
-  public String toString() {
-    return new StringJoiner(", ", DiscoveryRequest.class.getSimpleName() + "[", "]")
-        // fields
-        .add("appId='" + this.appId + "'")
-        .add("clientIp='" + this.clientIp + "'")
-        .toString();
+  public DiscoveryOptions getOptions() {
+    return this.options;
   }
 
   public static final class Builder {
 
-    private String appId;
-    private String clientIp;
+    private Endpoint endpoint;
+    private DiscoveryOptions options;
 
     Builder() {
     }
 
-    public Builder appId(String appId) {
-      this.appId = appId;
+    public Builder endpoint(Endpoint endpoint) {
+      this.endpoint = endpoint;
       return this;
     }
 
-    public Builder clientIp(String clientIp) {
-      this.clientIp = clientIp;
+    public Builder options(DiscoveryOptions options) {
+      this.options = options;
       return this;
     }
 

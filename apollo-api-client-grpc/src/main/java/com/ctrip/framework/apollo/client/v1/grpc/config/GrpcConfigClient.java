@@ -32,6 +32,7 @@ import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigException;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigNotFoundException;
+import com.ctrip.framework.apollo.client.v1.api.config.GetConfigOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigRequest;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigResponse;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigResult;
@@ -39,6 +40,7 @@ import com.ctrip.framework.apollo.client.v1.api.config.GetConfigStatus;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationDefinition;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationMessages;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationResult;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsRequest;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsResponse;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsStatus;
@@ -75,17 +77,19 @@ public class GrpcConfigClient implements ConfigClient {
   }
 
   @Override
-  public String traceWatch(Endpoint endpoint, WatchNotificationsRequest request) {
-    return this.toWatchHttpUri(endpoint, request);
+  public String traceWatch(WatchNotificationsRequest request) {
+    return this.toWatchHttpUri(request);
   }
 
-  private String toWatchHttpUri(Endpoint endpoint, WatchNotificationsRequest request) {
-    return null;
+  private String toWatchHttpUri(WatchNotificationsRequest request) {
+    return "";
   }
 
   @Override
-  public WatchNotificationsResponse watch(Endpoint endpoint, WatchNotificationsRequest request)
+  public WatchNotificationsResponse watch(WatchNotificationsRequest request)
       throws ConfigException {
+    Endpoint endpoint = request.getEndpoint();
+
     ManagedChannel channel = this.channelManager.getChannel(endpoint);
     NotificationServiceBlockingStub blockingStub = NotificationServiceGrpc.newBlockingStub(
         channel);
@@ -97,26 +101,29 @@ public class GrpcConfigClient implements ConfigClient {
   }
 
   private GrpcWatchNotificationRequest toWatchGrpcRequest(WatchNotificationsRequest request) {
+    Endpoint endpoint = request.getEndpoint();
+    WatchNotificationsOptions options = request.getOptions();
+
     GrpcWatchNotificationRequest.Builder builder = GrpcWatchNotificationRequest.newBuilder();
 
-    builder.setAppId(request.getAppId());
-    builder.setCluster(request.getCluster());
+    builder.setAppId(options.getAppId());
+    builder.setCluster(options.getCluster());
 
     List<GrpcNotificationDefinition> grpcNotifications = this.toGrpcNotificationDefinitions(
-        request.getNotifications());
+        options.getNotifications());
     builder.addAllNotifications(grpcNotifications);
 
-    String dataCenter = request.getDataCenter();
+    String dataCenter = options.getDataCenter();
     if (!InternalStringUtil.isEmpty(dataCenter)) {
       builder.setDataCenter(dataCenter);
     }
 
-    String clientIp = request.getClientIp();
+    String clientIp = options.getClientIp();
     if (!InternalStringUtil.isEmpty(clientIp)) {
       builder.setClientIp(clientIp);
     }
 
-    String label = request.getLabel();
+    String label = options.getLabel();
     if (!InternalStringUtil.isEmpty(label)) {
       builder.setLabel(label);
     }
@@ -142,7 +149,7 @@ public class GrpcConfigClient implements ConfigClient {
     return grpcNotifications;
   }
 
-  private <T> T doCallInternal(String scene, Callable<Iterator<T>> action) {
+  private <T> T doCallInternal(String scene, Callable<Iterator<T>> action) throws ConfigNotFoundException {
     try (CancellableContext cancellableContext = Context.current().withCancellation()) {
       Iterator<T> responseIterator = cancellableContext.call(action);
       if (responseIterator.hasNext()) {
@@ -215,22 +222,24 @@ public class GrpcConfigClient implements ConfigClient {
   }
 
   @Override
-  public String traceGetConfig(Endpoint endpoint, GetConfigRequest request) {
-    return this.toGetConfigHttpUri(endpoint, request);
+  public String traceGetConfig(GetConfigRequest request) {
+    return this.toGetConfigHttpUri(request);
   }
 
-  private String toGetConfigHttpUri(Endpoint endpoint, GetConfigRequest request) {
+  private String toGetConfigHttpUri(GetConfigRequest request) {
     return "";
   }
 
   @Override
-  public GetConfigResponse getConfig(Endpoint endpoint, GetConfigRequest request)
+  public GetConfigResponse getConfig(GetConfigRequest request)
       throws ConfigException, ConfigNotFoundException {
+    Endpoint endpoint = request.getEndpoint();
+    GetConfigOptions options = request.getOptions();
 
     ManagedChannel channel = this.channelManager.getChannel(endpoint);
     ConfigServiceBlockingStub blockingStub = ConfigServiceGrpc.newBlockingStub(
         channel);
-    GrpcGetConfigRequest grpcRequest = this.toGetConfigGrpcRequest(endpoint, request);
+    GrpcGetConfigRequest grpcRequest = this.toGetConfigGrpcRequest(request);
 
     GrpcGetConfigResponse grpcResponse = this.doCallInternal(
         "Get config",
@@ -249,35 +258,37 @@ public class GrpcConfigClient implements ConfigClient {
         .build();
   }
 
-  private GrpcGetConfigRequest toGetConfigGrpcRequest(Endpoint endpoint, GetConfigRequest request) {
+  private GrpcGetConfigRequest toGetConfigGrpcRequest(GetConfigRequest request) {
+    Endpoint endpoint = request.getEndpoint();
+    GetConfigOptions options = request.getOptions();
 
     GrpcGetConfigRequest.Builder builder = GrpcGetConfigRequest.newBuilder();
 
-    builder.setAppId(request.getAppId());
-    builder.setCluster(request.getCluster());
-    builder.setNamespace(request.getNamespace());
+    builder.setAppId(options.getAppId());
+    builder.setCluster(options.getCluster());
+    builder.setNamespace(options.getNamespace());
 
-    String releaseKey = request.getReleaseKey();
+    String releaseKey = options.getReleaseKey();
     if (!InternalStringUtil.isEmpty(releaseKey)) {
       builder.setReleaseKey(releaseKey);
     }
 
-    String dataCenter = request.getDataCenter();
+    String dataCenter = options.getDataCenter();
     if (!InternalStringUtil.isEmpty(dataCenter)) {
       builder.setDataCenter(dataCenter);
     }
 
-    String clientIp = request.getClientIp();
+    String clientIp = options.getClientIp();
     if (!InternalStringUtil.isEmpty(clientIp)) {
       builder.setClientIp(clientIp);
     }
 
-    String label = request.getLabel();
+    String label = options.getLabel();
     if (!InternalStringUtil.isEmpty(label)) {
       builder.setLabel(label);
     }
 
-    GrpcNotificationMessages grpcMessages = this.toGrpcNotificationMessages(request.getMessages());
+    GrpcNotificationMessages grpcMessages = this.toGrpcNotificationMessages(options.getMessages());
     if (grpcMessages != null) {
       builder.setMessages(grpcMessages);
     }

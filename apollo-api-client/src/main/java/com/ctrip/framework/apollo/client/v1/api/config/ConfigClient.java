@@ -16,48 +16,45 @@
  */
 package com.ctrip.framework.apollo.client.v1.api.config;
 
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
-
+/**
+ * Api client for Apollo Config Service
+ */
 public interface ConfigClient {
 
   /**
    * trace url for watch notification changes
    *
-   * @param endpoint server address
-   * @param request  interested notifications
+   * @param request watch notification request
    * @return trace url
    */
-  String traceWatch(Endpoint endpoint, WatchNotificationsRequest request);
+  String traceWatch(WatchNotificationsRequest request);
 
   /**
    * watch notification changes
    *
-   * @param endpoint server address
-   * @param request  interested notifications
+   * @param request watch notification request
    * @return changed notifications
    * @throws ConfigException watch failed
    */
-  WatchNotificationsResponse watch(Endpoint endpoint, WatchNotificationsRequest request)
+  WatchNotificationsResponse watch(WatchNotificationsRequest request)
       throws ConfigException;
 
   /**
    * trace url for get config
    *
-   * @param endpoint server address
-   * @param request  config queries
+   * @param request get config request
    * @return trace url
    */
-  String traceGetConfig(Endpoint endpoint, GetConfigRequest request);
+  String traceGetConfig(GetConfigRequest request);
 
   /**
    * get latest config
    *
-   * @param endpoint server address
-   * @param request  config queries
+   * @param request get config request
    * @return latest config
    * @throws ConfigException         get failed
    * @throws ConfigNotFoundException config not found
    */
-  GetConfigResponse getConfig(Endpoint endpoint, GetConfigRequest request)
+  GetConfigResponse getConfig(GetConfigRequest request)
       throws ConfigException, ConfigNotFoundException;
 }

@@ -21,6 +21,7 @@ import static com.ctrip.framework.apollo.monitor.internal.ApolloClientMonitorCon
 import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.meta.ConfigServiceInstance;
+import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryOptions;
 import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryRequest;
 import com.ctrip.framework.apollo.client.v1.api.meta.MetaClient;
 import com.ctrip.framework.apollo.core.ApolloClientSystemConsts;
@@ -31,7 +32,6 @@ import com.ctrip.framework.apollo.core.utils.DeferredLoggerFactory;
 import com.ctrip.framework.apollo.core.utils.DeprecatedPropertyNotifyUtil;
 import com.ctrip.framework.foundation.Foundation;
 import com.google.common.util.concurrent.RateLimiter;
-import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -41,31 +41,19 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 
-import com.ctrip.framework.apollo.build.ApolloInjector;
-import com.ctrip.framework.apollo.core.dto.ServiceDTO;
-import com.ctrip.framework.apollo.core.utils.ApolloThreadFactory;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.spi.MetaClientHolder;
 import com.ctrip.framework.apollo.tracer.Tracer;
 import com.ctrip.framework.apollo.tracer.spi.Transaction;
 import com.ctrip.framework.apollo.util.ConfigUtil;
 import com.ctrip.framework.apollo.util.ExceptionUtil;
-import com.ctrip.framework.foundation.Foundation;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.escape.Escaper;
 import com.google.common.net.UrlEscapers;
-import com.google.common.util.concurrent.RateLimiter;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import org.slf4j.Logger;
 
 public class ConfigServiceLocator {
   private static final Logger logger = DeferredLoggerFactory.getLogger(ConfigServiceLocator.class);
@@ -254,10 +242,14 @@ public class ConfigServiceLocator {
     Endpoint endpoint = Endpoint.builder()
         .address(domainName)
         .build();
-    DiscoveryRequest discoveryRequest = assembleMetaServiceRequest();
+    DiscoveryOptions discoveryOptions = assembleMetaServiceOptions();
+    DiscoveryRequest discoveryRequest = DiscoveryRequest.builder()
+        .endpoint(endpoint)
+        .options(discoveryOptions)
+        .build();
 
     MetaClient metaClient = m_metaClientHolder.getMetaClient();
-    String url = metaClient.traceGetServices(endpoint, discoveryRequest);
+    String url = metaClient.traceGetServices(discoveryRequest);
 
     int maxRetries = 2;
     Throwable exception = null;
@@ -304,10 +296,10 @@ public class ConfigServiceLocator {
     logConfigServices(services);
   }
 
-  DiscoveryRequest assembleMetaServiceRequest() {
+  DiscoveryOptions assembleMetaServiceOptions() {
     String appId = m_configUtil.getAppId();
     String localIp = m_configUtil.getLocalIp();
-    return DiscoveryRequest.builder()
+    return DiscoveryOptions.builder()
         .appId(appId)
         .clientIp(localIp)
         .build();

@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.build.MockInjector;
 import com.ctrip.framework.apollo.client.v1.api.Endpoint;
+import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryOptions;
 import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryRequest;
 import com.ctrip.framework.apollo.client.v1.api.meta.MetaClient;
 import com.ctrip.framework.apollo.core.ApolloClientSystemConsts;
@@ -152,11 +153,15 @@ public class ConfigServiceLocatorTest {
     Endpoint endpoint = Endpoint.builder()
         .address(MockConfigUtil.someMetaServerDomainName)
         .build();
-    DiscoveryRequest request = configServiceLocator.assembleMetaServiceRequest();
+    DiscoveryOptions options = configServiceLocator.assembleMetaServiceOptions();
+    DiscoveryRequest request = DiscoveryRequest.builder()
+        .endpoint(endpoint)
+        .options(options)
+        .build();
 
     MetaClientHolder clientHolder = ApolloInjector.getInstance(MetaClientHolder.class);
     MetaClient metaClient = clientHolder.getMetaClient();
-    String queryServiceUrl = metaClient.traceGetServices(endpoint, request);
+    String queryServiceUrl = metaClient.traceGetServices(request);
 
     assertEquals(queryServiceUrlOld, queryServiceUrl);
   }

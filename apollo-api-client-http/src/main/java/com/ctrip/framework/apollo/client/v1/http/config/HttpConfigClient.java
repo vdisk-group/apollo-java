@@ -20,6 +20,7 @@ import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigException;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigNotFoundException;
+import com.ctrip.framework.apollo.client.v1.api.config.GetConfigOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigRequest;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigResponse;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigResult;
@@ -27,6 +28,7 @@ import com.ctrip.framework.apollo.client.v1.api.config.GetConfigStatus;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationDefinition;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationMessages;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationResult;
+import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsRequest;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsResponse;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsStatus;
@@ -74,21 +76,24 @@ public class HttpConfigClient implements ConfigClient {
   }
 
   @Override
-  public String traceWatch(Endpoint endpoint, WatchNotificationsRequest request) {
-    return this.toWatchHttpUri(endpoint, request);
+  public String traceWatch(WatchNotificationsRequest request) {
+    return this.toWatchHttpUri(request);
   }
 
-  private String toWatchHttpUri(Endpoint endpoint, WatchNotificationsRequest request) {
-    Map<String, String> queryParams = new LinkedHashMap<>();
-    queryParams.put("appId", request.getAppId());
-    queryParams.put("cluster", request.getCluster());
-    queryParams.put("notifications", this.assembleNotifications(request.getNotifications()));
+  private String toWatchHttpUri(WatchNotificationsRequest request) {
+    Endpoint endpoint = request.getEndpoint();
+    WatchNotificationsOptions options = request.getOptions();
 
-    String dataCenter = request.getDataCenter();
+    Map<String, String> queryParams = new LinkedHashMap<>();
+    queryParams.put("appId", options.getAppId());
+    queryParams.put("cluster", options.getCluster());
+    queryParams.put("notifications", this.assembleNotifications(options.getNotifications()));
+
+    String dataCenter = options.getDataCenter();
     if (!StringUtils.isEmpty(dataCenter)) {
       queryParams.put("dataCenter", dataCenter);
     }
-    String clientIp = request.getClientIp();
+    String clientIp = options.getClientIp();
     if (!StringUtils.isEmpty(clientIp)) {
       queryParams.put("ip", clientIp);
     }
@@ -98,9 +103,9 @@ public class HttpConfigClient implements ConfigClient {
   }
 
   @Override
-  public WatchNotificationsResponse watch(Endpoint endpoint, WatchNotificationsRequest request)
+  public WatchNotificationsResponse watch(WatchNotificationsRequest request)
       throws ConfigException {
-    HttpTransportRequest httpTransportRequest = this.toWatchHttpRequest(endpoint, request);
+    HttpTransportRequest httpTransportRequest = this.toWatchHttpRequest(request);
     HttpTransportResponse<List<ApolloConfigNotification>> httpTransportResponse = this.doGetInternal(
         "Watch notifications",
         () -> this.httpTransport.doGet(httpTransportRequest, WATCH_NOTIFICATIONS_RESPONSE_TYPE));
@@ -108,9 +113,8 @@ public class HttpConfigClient implements ConfigClient {
     return this.toWatchResponse(httpTransportResponse);
   }
 
-  private HttpTransportRequest toWatchHttpRequest(Endpoint endpoint,
-      WatchNotificationsRequest request) {
-    String uri = this.toWatchHttpUri(endpoint, request);
+  private HttpTransportRequest toWatchHttpRequest(WatchNotificationsRequest request) {
+    String uri = this.toWatchHttpUri(request);
 
     HttpTransportRequest.Builder requestBuilder = HttpTransportRequest.builder()
         .url(uri)
@@ -136,8 +140,10 @@ public class HttpConfigClient implements ConfigClient {
 
   private void signWatchNotifications(String uri, WatchNotificationsRequest request,
       HttpTransportRequest.Builder requestBuilder) {
-    String accessKeySecret = request.getAccessKeySecret();
-    String appId = request.getAppId();
+    WatchNotificationsOptions options = request.getOptions();
+
+    String accessKeySecret = options.getAccessKeySecret();
+    String appId = options.getAppId();
     this.signHttpRequest(uri, appId, accessKeySecret, requestBuilder);
   }
 
@@ -231,34 +237,37 @@ public class HttpConfigClient implements ConfigClient {
   }
 
   @Override
-  public String traceGetConfig(Endpoint endpoint, GetConfigRequest request) {
-    return this.toGetConfigHttpUri(endpoint, request);
+  public String traceGetConfig(GetConfigRequest request) {
+    return this.toGetConfigHttpUri(request);
   }
 
-  private String toGetConfigHttpUri(Endpoint endpoint, GetConfigRequest request) {
+  private String toGetConfigHttpUri(GetConfigRequest request) {
+    Endpoint endpoint = request.getEndpoint();
+    GetConfigOptions options = request.getOptions();
+
     Map<String, String> queryParams = new LinkedHashMap<>();
 
-    String releaseKey = request.getReleaseKey();
+    String releaseKey = options.getReleaseKey();
     if (!StringUtils.isEmpty(releaseKey)) {
       queryParams.put("releaseKey", releaseKey);
     }
 
-    String dataCenter = request.getDataCenter();
+    String dataCenter = options.getDataCenter();
     if (!StringUtils.isEmpty(dataCenter)) {
       queryParams.put("dataCenter", dataCenter);
     }
 
-    String clientIp = request.getClientIp();
+    String clientIp = options.getClientIp();
     if (!StringUtils.isEmpty(clientIp)) {
       queryParams.put("ip", clientIp);
     }
 
-    String label = request.getLabel();
+    String label = options.getLabel();
     if (!StringUtils.isEmpty(label)) {
       queryParams.put("label", label);
     }
 
-    NotificationMessages messages = request.getMessages();
+    NotificationMessages messages = options.getMessages();
     if (messages != null) {
       queryParams.put("messages", this.assembleMessages(messages));
     }
@@ -268,16 +277,16 @@ public class HttpConfigClient implements ConfigClient {
     String query = InternalHttpUtil.toQueryString(queryParams);
 
     return MessageFormat.format("{0}/configs/{1}/{2}/{3}{4}", actualAddress,
-        InternalHttpUtil.toPathSegment(request.getAppId()),
-        InternalHttpUtil.toPathSegment(request.getCluster()),
-        InternalHttpUtil.toPathSegment(request.getNamespace()), query);
+        InternalHttpUtil.toPathSegment(options.getAppId()),
+        InternalHttpUtil.toPathSegment(options.getCluster()),
+        InternalHttpUtil.toPathSegment(options.getNamespace()), query);
   }
 
   @Override
-  public GetConfigResponse getConfig(Endpoint endpoint, GetConfigRequest request)
+  public GetConfigResponse getConfig(GetConfigRequest request)
       throws ConfigException, ConfigNotFoundException {
 
-    HttpTransportRequest httpTransportRequest = this.toGetConfigHttpRequest(endpoint, request);
+    HttpTransportRequest httpTransportRequest = this.toGetConfigHttpRequest(request);
 
     HttpTransportResponse<ApolloConfig> httpTransportResponse = this.doGetInternal(
         "Get config",
@@ -296,8 +305,8 @@ public class HttpConfigClient implements ConfigClient {
         .build();
   }
 
-  private HttpTransportRequest toGetConfigHttpRequest(Endpoint endpoint, GetConfigRequest request) {
-    String uri = this.toGetConfigHttpUri(endpoint, request);
+  private HttpTransportRequest toGetConfigHttpRequest(GetConfigRequest request) {
+    String uri = this.toGetConfigHttpUri(request);
 
     HttpTransportRequest.Builder requestBuilder = HttpTransportRequest.builder()
         .url(uri)
@@ -317,8 +326,10 @@ public class HttpConfigClient implements ConfigClient {
 
   private void signGetConfig(String uri, GetConfigRequest request,
       HttpTransportRequest.Builder requestBuilder) {
-    String accessKeySecret = request.getAccessKeySecret();
-    String appId = request.getAppId();
+    GetConfigOptions options = request.getOptions();
+
+    String accessKeySecret = options.getAccessKeySecret();
+    String appId = options.getAppId();
     this.signHttpRequest(uri, appId, accessKeySecret, requestBuilder);
   }
 

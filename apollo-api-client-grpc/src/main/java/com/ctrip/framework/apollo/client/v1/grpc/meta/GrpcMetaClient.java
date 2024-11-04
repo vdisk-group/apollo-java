@@ -23,6 +23,7 @@ import com.ctrip.framework.apollo.api.v1.grpc.meta.MetaServiceGrpc;
 import com.ctrip.framework.apollo.api.v1.grpc.meta.MetaServiceGrpc.MetaServiceBlockingStub;
 import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.meta.ConfigServiceInstance;
+import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryOptions;
 import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryRequest;
 import com.ctrip.framework.apollo.client.v1.api.meta.MetaClient;
 import com.ctrip.framework.apollo.client.v1.api.meta.MetaException;
@@ -55,20 +56,21 @@ public class GrpcMetaClient implements MetaClient {
   }
 
   @Override
-  public String traceGetServices(Endpoint endpoint, DiscoveryRequest request) {
-    return this.toGetServicesUri(endpoint, request);
+  public String traceGetServices(DiscoveryRequest request) {
+    return this.toGetServicesUri(request);
   }
 
-  private String toGetServicesUri(Endpoint endpoint, DiscoveryRequest request) {
+  private String toGetServicesUri(DiscoveryRequest request) {
     return "";
   }
 
   @Override
-  public List<ConfigServiceInstance> getServices(Endpoint endpoint, DiscoveryRequest request) {
+  public List<ConfigServiceInstance> getServices(DiscoveryRequest request) {
+    Endpoint endpoint = request.getEndpoint();
 
     ManagedChannel channel = this.channelManager.getChannel(endpoint);
     MetaServiceBlockingStub blockingStub = MetaServiceGrpc.newBlockingStub(channel);
-    GrpcDiscoveryRequest grpcRequest = this.toGetServicesGrpcRequest(endpoint, request);
+    GrpcDiscoveryRequest grpcRequest = this.toGetServicesGrpcRequest(request);
 
     GrpcDiscoveryResponse grpcResponse = this.doCallInternal(
         "Get config services",
@@ -91,16 +93,17 @@ public class GrpcMetaClient implements MetaClient {
     return Collections.unmodifiableList(configServiceInstanceList);
   }
 
-  private GrpcDiscoveryRequest toGetServicesGrpcRequest(Endpoint endpoint,
-      DiscoveryRequest request) {
+  private GrpcDiscoveryRequest toGetServicesGrpcRequest(DiscoveryRequest request) {
+    DiscoveryOptions options = request.getOptions();
+
     GrpcDiscoveryRequest.Builder builder = GrpcDiscoveryRequest.newBuilder();
 
-    String appId = request.getAppId();
+    String appId = options.getAppId();
     if (!InternalStringUtil.isEmpty(appId)) {
       builder.setAppId(appId);
     }
 
-    String clientIp = request.getClientIp();
+    String clientIp = options.getClientIp();
     if (!InternalStringUtil.isEmpty(clientIp)) {
       builder.setClientIp(clientIp);
     }

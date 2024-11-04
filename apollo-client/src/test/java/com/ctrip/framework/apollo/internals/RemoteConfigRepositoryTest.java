@@ -34,6 +34,7 @@ import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.build.MockInjector;
 import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
+import com.ctrip.framework.apollo.client.v1.api.config.GetConfigOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigRequest;
 import com.ctrip.framework.apollo.core.dto.ApolloConfig;
 import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
@@ -361,13 +362,17 @@ public class RemoteConfigRepositoryTest {
     Endpoint endpoint = Endpoint.builder()
         .address(someUri)
         .build();
-    GetConfigRequest configRequest = remoteConfigRepository.assembleQueryConfigRequest(someAppId,
+    GetConfigOptions configOptions = remoteConfigRepository.assembleQueryConfigOptions(someAppId,
         someCluster, someNamespace, null,
         notificationMessages,
         someApolloConfig);
+    GetConfigRequest configRequest = GetConfigRequest.builder()
+        .endpoint(endpoint)
+        .options(configOptions)
+        .build();
     ConfigClientHolder clientHolder = ApolloInjector.getInstance(ConfigClientHolder.class);
     ConfigClient configClient = clientHolder.getConfigClient();
-    String queryConfigUrl = configClient.traceGetConfig(endpoint, configRequest);
+    String queryConfigUrl = configClient.traceGetConfig(configRequest);
 
     assertEquals(queryConfigUrlOld, queryConfigUrl);
 
