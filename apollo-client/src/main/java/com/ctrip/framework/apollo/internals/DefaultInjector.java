@@ -18,6 +18,11 @@ package com.ctrip.framework.apollo.internals;
 
 import com.ctrip.framework.apollo.core.http.HttpTransport;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
+import com.ctrip.framework.apollo.monitor.api.ConfigMonitor;
+import com.ctrip.framework.apollo.monitor.internal.DefaultConfigMonitor;
+import com.ctrip.framework.apollo.monitor.internal.exporter.impl.DefaultApolloClientMetricsExporterFactory;
+import com.ctrip.framework.apollo.monitor.internal.ApolloClientMonitorContext;
+import com.ctrip.framework.apollo.monitor.internal.exporter.ApolloClientMetricsExporterFactory;
 import com.ctrip.framework.apollo.spi.ApolloInjectorCustomizer;
 import com.ctrip.framework.apollo.spi.ConfigClientHolder;
 import com.ctrip.framework.apollo.spi.ConfigFactory;
@@ -113,6 +118,9 @@ public class DefaultInjector implements Injector {
       bind(RemoteConfigLongPollService.class).in(Singleton.class);
       bind(YamlParser.class).in(Singleton.class);
       bind(PropertiesFactory.class).to(DefaultPropertiesFactory.class).in(Singleton.class);
+      bind(ConfigMonitor.class).to(DefaultConfigMonitor.class).in(Singleton.class);
+      bind(ApolloClientMonitorContext.class).in(Singleton.class);
+      bind(ApolloClientMetricsExporterFactory.class).to(DefaultApolloClientMetricsExporterFactory.class).in(Singleton.class);
     }
   }
 }

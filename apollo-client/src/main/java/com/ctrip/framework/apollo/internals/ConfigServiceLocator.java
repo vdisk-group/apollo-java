@@ -16,6 +16,8 @@
  */
 package com.ctrip.framework.apollo.internals;
 
+import static com.ctrip.framework.apollo.monitor.internal.ApolloClientMonitorConstant.*;
+
 import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.meta.ConfigServiceInstance;
@@ -27,6 +29,21 @@ import com.ctrip.framework.apollo.core.dto.ServiceDTO;
 import com.ctrip.framework.apollo.core.utils.ApolloThreadFactory;
 import com.ctrip.framework.apollo.core.utils.DeferredLoggerFactory;
 import com.ctrip.framework.apollo.core.utils.DeprecatedPropertyNotifyUtil;
+import com.ctrip.framework.foundation.Foundation;
+import com.google.common.util.concurrent.RateLimiter;
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.slf4j.Logger;
+
+import com.ctrip.framework.apollo.build.ApolloInjector;
+import com.ctrip.framework.apollo.core.dto.ServiceDTO;
+import com.ctrip.framework.apollo.core.utils.ApolloThreadFactory;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.spi.MetaClientHolder;
 import com.ctrip.framework.apollo.tracer.Tracer;
@@ -216,7 +233,7 @@ public class ConfigServiceLocator {
           @Override
           public void run() {
             logger.debug("refresh config services");
-            Tracer.logEvent("Apollo.MetaService", "periodicRefresh");
+            Tracer.logEvent(APOLLO_META_SERVICE, "periodicRefresh");
             tryUpdateConfigServices();
           }
         }, m_configUtil.getRefreshInterval(), m_configUtil.getRefreshInterval(),
@@ -264,7 +281,7 @@ public class ConfigServiceLocator {
           logger.debug("getConfigService failed [i:{}] {}", i, ExceptionUtil.getDetailMessage(ex),
               ex);
         }
-        Tracer.logEvent("ApolloConfigException", ExceptionUtil.getDetailMessage(ex));
+        Tracer.logEvent(APOLLO_CONFIG_EXCEPTION, ExceptionUtil.getDetailMessage(ex));
         transaction.setStatus(ex);
         exception = ex;
       } finally {
@@ -332,6 +349,6 @@ public class ConfigServiceLocator {
   }
 
   private void logConfigService(String serviceUrl) {
-    Tracer.logEvent("Apollo.Config.Services", serviceUrl);
+    Tracer.logEvent(APOLLO_CONFIG_SERVICES, serviceUrl);
   }
 }
