@@ -258,8 +258,7 @@ public class ConfigServiceLocator {
       Transaction transaction = Tracer.newTransaction("Apollo.MetaService", "getConfigService");
       transaction.addData("Url", url);
       try {
-        List<ConfigServiceInstance> serviceInstances = metaClient.getServices(endpoint,
-            discoveryRequest);
+        List<ConfigServiceInstance> serviceInstances = metaClient.getServices(discoveryRequest);
         transaction.setStatus(Transaction.SUCCESS);
         List<ServiceDTO> services = this.toServiceDTOList(serviceInstances);
         if (services == null || services.isEmpty()) {
