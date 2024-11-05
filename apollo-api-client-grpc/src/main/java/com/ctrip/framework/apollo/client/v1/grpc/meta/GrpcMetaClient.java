@@ -30,6 +30,8 @@ import com.ctrip.framework.apollo.client.v1.api.meta.MetaException;
 import com.ctrip.framework.apollo.client.v1.grpc.GrpcChannelManager;
 import com.ctrip.framework.apollo.client.v1.grpc.util.InternalCollectionUtil;
 import com.ctrip.framework.apollo.client.v1.grpc.util.InternalStringUtil;
+import com.ctrip.framework.apollo.client.v1.grpc.util.ScopedContext;
+import com.ctrip.framework.apollo.client.v1.grpc.util.ScopedContexts;
 import io.grpc.Context;
 import io.grpc.Context.CancellableContext;
 import io.grpc.ManagedChannel;
@@ -68,29 +70,33 @@ public class GrpcMetaClient implements MetaClient {
   public List<ConfigServiceInstance> getServices(DiscoveryRequest request) {
     Endpoint endpoint = request.getEndpoint();
 
-    ManagedChannel channel = this.channelManager.getChannel(endpoint);
-    MetaServiceBlockingStub blockingStub = MetaServiceGrpc.newBlockingStub(channel);
-    GrpcDiscoveryRequest grpcRequest = this.toGetServicesGrpcRequest(request);
+    try (ScopedContext scopedContext = ScopedContexts.newContext()) {
 
-    GrpcDiscoveryResponse grpcResponse = this.doCallInternal(
-        "Get config services",
-        () -> blockingStub.getServices(grpcRequest));
+      ManagedChannel channel = this.channelManager.getChannel(endpoint, scopedContext);
+      MetaServiceBlockingStub blockingStub = MetaServiceGrpc.newBlockingStub(channel);
+      GrpcDiscoveryRequest grpcRequest = this.toGetServicesGrpcRequest(request);
 
-    List<GrpcServiceInstance> instancesList = grpcResponse.getInstancesList();
-    if (InternalCollectionUtil.isEmpty(instancesList)) {
-      return Collections.emptyList();
+      GrpcDiscoveryResponse grpcResponse = this.doCallInternal(
+          "Get config services",
+          () -> blockingStub.getServices(grpcRequest));
+
+      List<GrpcServiceInstance> instancesList = grpcResponse.getInstancesList();
+      if (InternalCollectionUtil.isEmpty(instancesList)) {
+        return Collections.emptyList();
+      }
+
+      List<ConfigServiceInstance> configServiceInstanceList = new ArrayList<>(instancesList.size());
+      for (GrpcServiceInstance grpcInstance : instancesList) {
+        ConfigServiceInstance instance = ConfigServiceInstance.builder()
+            .serviceId(grpcInstance.getServiceId())
+            .instanceId(grpcInstance.getInstanceId())
+            .address(grpcInstance.getAddress())
+            .build();
+        configServiceInstanceList.add(instance);
+      }
+      return Collections.unmodifiableList(configServiceInstanceList);
     }
 
-    List<ConfigServiceInstance> configServiceInstanceList = new ArrayList<>(instancesList.size());
-    for (GrpcServiceInstance grpcInstance : instancesList) {
-      ConfigServiceInstance instance = ConfigServiceInstance.builder()
-          .serviceId(grpcInstance.getServiceId())
-          .instanceId(grpcInstance.getInstanceId())
-          .address(grpcInstance.getAddress())
-          .build();
-      configServiceInstanceList.add(instance);
-    }
-    return Collections.unmodifiableList(configServiceInstanceList);
   }
 
   private GrpcDiscoveryRequest toGetServicesGrpcRequest(DiscoveryRequest request) {

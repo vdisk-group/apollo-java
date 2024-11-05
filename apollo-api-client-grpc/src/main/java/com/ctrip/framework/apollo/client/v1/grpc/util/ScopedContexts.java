@@ -14,19 +14,15 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.v1.grpc;
+package com.ctrip.framework.apollo.client.v1.grpc.util;
 
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
-import com.ctrip.framework.apollo.client.v1.grpc.util.ScopedContext;
-import io.grpc.ManagedChannel;
+public class ScopedContexts {
 
-public interface GrpcChannelManager {
+    private ScopedContexts() {
+        throw new UnsupportedOperationException("util class");
+    }
 
-  /**
-   * Get a gRPC channel for the given endpoint
-   *
-   * @param endpoint the endpoint
-   * @return a gRPC channel
-   */
-  ManagedChannel getChannel(Endpoint endpoint, ScopedContext scopedContext);
+    public static ScopedContext newContext() {
+        return new DefaultScopedContext();
+    }
 }

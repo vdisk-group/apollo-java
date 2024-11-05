@@ -16,17 +16,12 @@
  */
 package com.ctrip.framework.apollo.client.v1.grpc;
 
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
-import com.ctrip.framework.apollo.client.v1.grpc.util.ScopedContext;
-import io.grpc.ManagedChannel;
-
-public interface GrpcChannelManager {
+public interface GrpcChannelManagerFactory {
 
   /**
-   * Get a gRPC channel for the given endpoint
+   * Get a gRPC channel manager
    *
-   * @param endpoint the endpoint
-   * @return a gRPC channel
+   * @return a gRPC channel manager
    */
-  ManagedChannel getChannel(Endpoint endpoint, ScopedContext scopedContext);
+  GrpcChannelManager getChannelManager();
 }
