@@ -21,6 +21,7 @@ import com.ctrip.framework.apollo.core.http.HttpTransportException;
 import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
 import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
 import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
+import com.ctrip.framework.apollo.core.http.TypeReference;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
 import java.lang.reflect.Type;
@@ -44,9 +45,10 @@ public class HttpClientWrapper implements HttpTransport {
 
   @Override
   public <T> HttpTransportResponse<T> doGet(HttpTransportRequest httpTransportRequest,
-      Class<T> responseType) throws HttpTransportException, HttpTransportStatusCodeException {
+      TypeReference<T> responseType)
+      throws HttpTransportException, HttpTransportStatusCodeException {
     HttpRequest httpRequest = this.toHttpRequest(httpTransportRequest);
-    return this.doGetInternal(() -> this.httpClient.doGet(httpRequest, responseType));
+    return this.doGetInternal(() -> this.httpClient.doGet(httpRequest, responseType.getType()));
   }
 
   private <T> HttpTransportResponse<T> doGetInternal(Supplier<HttpResponse<T>> action) {
@@ -82,16 +84,11 @@ public class HttpClientWrapper implements HttpTransport {
   }
 
   @Override
-  public <T> HttpTransportResponse<T> doGet(HttpTransportRequest httpTransportRequest,
-      Type responseType) throws HttpTransportException, HttpTransportStatusCodeException {
-    HttpRequest httpRequest = this.toHttpRequest(httpTransportRequest);
-    return this.doGetInternal(() -> this.httpClient.doGet(httpRequest, responseType));
-  }
-
-  @Override
   public HttpTransportResponse<Void> doGet(HttpTransportRequest httpTransportRequest)
       throws HttpTransportException, HttpTransportStatusCodeException {
     HttpRequest httpRequest = this.toHttpRequest(httpTransportRequest);
-    return this.doGetInternal(() -> this.httpClient.doGet(httpRequest, Void.class));
+    HttpTransportResponse<Object> rawResponse = this.doGetInternal(
+        () -> this.httpClient.doGet(httpRequest, Object.class));
+    return new HttpTransportResponse<>(rawResponse.getStatusCode(), null);
   }
 }

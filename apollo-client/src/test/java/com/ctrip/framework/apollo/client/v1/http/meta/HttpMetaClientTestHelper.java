@@ -14,20 +14,16 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.v1.http.config;
+package com.ctrip.framework.apollo.client.v1.http.meta;
 
-import com.ctrip.framework.apollo.core.dto.ApolloConfig;
-import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
+import com.ctrip.framework.apollo.core.dto.ServiceDTO;
 import com.ctrip.framework.apollo.core.http.TypeReference;
 import java.util.List;
 
-public class HttpConfigClientTestHelper {
+public class HttpMetaClientTestHelper {
 
-  public static TypeReference<ApolloConfig> getGetConfigResponseType() {
-    return HttpConfigClient.GET_CONFIG_RESPONSE_TYPE;
-  }
+    public static TypeReference<List<ServiceDTO>> getServicesResponseType() {
+        return HttpMetaClient.GET_SERVICES_RESPONSE_TYPE;
+    }
 
-  public static TypeReference<List<ApolloConfigNotification>> getWatchNotificationsResponseType() {
-    return HttpConfigClient.WATCH_NOTIFICATIONS_RESPONSE_TYPE;
-  }
 }

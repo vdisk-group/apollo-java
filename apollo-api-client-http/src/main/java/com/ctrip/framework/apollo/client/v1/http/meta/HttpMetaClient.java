@@ -30,6 +30,8 @@ import com.ctrip.framework.apollo.core.http.HttpTransportException;
 import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
 import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
 import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
+import com.ctrip.framework.apollo.core.http.TypeReference;
+import com.ctrip.framework.apollo.core.http.TypeReferences;
 import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Maps;
@@ -44,8 +46,9 @@ import java.util.Objects;
 
 public class HttpMetaClient implements MetaClient {
 
-  private static final Type GET_SERVICES_RESPONSE_TYPE = new TypeToken<List<ServiceDTO>>() {
-  }.getType();
+  static final TypeReference<List<ServiceDTO>> GET_SERVICES_RESPONSE_TYPE = TypeReferences.ofTypeToken(
+      new TypeToken<List<ServiceDTO>>() {
+      });
 
   private final HttpTransport httpTransport;
 

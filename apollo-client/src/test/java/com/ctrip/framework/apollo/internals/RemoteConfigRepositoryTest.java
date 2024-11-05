@@ -36,6 +36,7 @@ import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigRequest;
+import com.ctrip.framework.apollo.client.v1.http.config.HttpConfigClientTestHelper;
 import com.ctrip.framework.apollo.core.dto.ApolloConfig;
 import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
 import com.ctrip.framework.apollo.core.dto.ApolloNotificationMessages;
@@ -45,6 +46,7 @@ import com.ctrip.framework.apollo.core.http.HttpTransportException;
 import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
 import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
 import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
+import com.ctrip.framework.apollo.core.http.TypeReference;
 import com.ctrip.framework.apollo.core.signature.Signature;
 import com.ctrip.framework.apollo.enums.ConfigSourceType;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
@@ -89,6 +91,8 @@ public class RemoteConfigRepositoryTest {
   private String someServerUrl;
   private ConfigUtil configUtil;
   private HttpTransport httpTransport;
+  private static TypeReference<ApolloConfig> getConfigResponseType;
+  private static TypeReference<List<ApolloConfigNotification>> watchNotificationsResponseType;
   @Mock
   private static HttpTransportResponse<ApolloConfig> someResponse;
   @Mock
@@ -121,6 +125,8 @@ public class RemoteConfigRepositoryTest {
     httpTransport = spy(new MockHttpTransport());
     MockInjector.setInstance(HttpTransport.class, httpTransport);
     MockInjector.setInstance(ConfigClientHolder.class, new MockConfigClientHolder());
+    getConfigResponseType = HttpConfigClientTestHelper.getGetConfigResponseType();
+    watchNotificationsResponseType = HttpConfigClientTestHelper.getWatchNotificationsResponseType();
 
     remoteConfigLongPollService = new RemoteConfigLongPollService();
 
@@ -217,7 +223,7 @@ public class RemoteConfigRepositoryTest {
 
         return someResponse;
       }
-    }).when(httpTransport).doGet(any(HttpTransportRequest.class), any(Class.class));
+    }).when(httpTransport).doGet(any(HttpTransportRequest.class), eq(getConfigResponseType));
 
     RemoteConfigRepository remoteConfigRepository = new RemoteConfigRepository(someNamespace);
 
@@ -328,7 +334,7 @@ public class RemoteConfigRepositoryTest {
     final ArgumentCaptor<HttpTransportRequest> httpRequestArgumentCaptor = ArgumentCaptor
         .forClass(HttpTransportRequest.class);
     verify(httpTransport, atLeast(1)).doGet(httpRequestArgumentCaptor.capture(),
-        eq(ApolloConfig.class));
+        eq(getConfigResponseType));
 
     HttpTransportRequest request = httpRequestArgumentCaptor.getValue();
 
@@ -449,8 +455,19 @@ public class RemoteConfigRepositoryTest {
   public static class MockHttpTransport implements HttpTransport {
 
     @Override
-    public <T> HttpTransportResponse<T> doGet(HttpTransportRequest httpRequest,
-        Class<T> responseType) {
+    public <T> HttpTransportResponse<T> doGet(HttpTransportRequest httpTransportRequest,
+        TypeReference<T> responseType)
+        throws HttpTransportException, HttpTransportStatusCodeException {
+      if (responseType.equals(RemoteConfigRepositoryTest.getConfigResponseType)) {
+        return this.getConfigResponse();
+      } else if (responseType.equals(RemoteConfigRepositoryTest.watchNotificationsResponseType)) {
+        return this.getNotificationsResponse();
+      } else {
+        throw new IllegalArgumentException("Unsupported response type");
+      }
+    }
+
+    private <T> HttpTransportResponse<T> getConfigResponse() {
       if (someResponse.getStatusCode() == 200 || someResponse.getStatusCode() == 304) {
         return (HttpTransportResponse<T>) someResponse;
       }
@@ -459,8 +476,7 @@ public class RemoteConfigRepositoryTest {
               someResponse.getStatusCode()));
     }
 
-    @Override
-    public <T> HttpTransportResponse<T> doGet(HttpTransportRequest httpRequest, Type responseType) {
+    private <T> HttpTransportResponse<T> getNotificationsResponse() {
       try {
         TimeUnit.MILLISECONDS.sleep(50);
       } catch (InterruptedException e) {

@@ -14,20 +14,26 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.v1.http.config;
+package com.ctrip.framework.apollo.core.http;
 
-import com.ctrip.framework.apollo.core.dto.ApolloConfig;
-import com.ctrip.framework.apollo.core.dto.ApolloConfigNotification;
-import com.ctrip.framework.apollo.core.http.TypeReference;
-import java.util.List;
+import com.google.common.reflect.TypeToken;
+import java.lang.reflect.Type;
 
-public class HttpConfigClientTestHelper {
+public class TypeReferences {
 
-  public static TypeReference<ApolloConfig> getGetConfigResponseType() {
-    return HttpConfigClient.GET_CONFIG_RESPONSE_TYPE;
+  private TypeReferences() {
+    throw new UnsupportedOperationException("util class");
   }
 
-  public static TypeReference<List<ApolloConfigNotification>> getWatchNotificationsResponseType() {
-    return HttpConfigClient.WATCH_NOTIFICATIONS_RESPONSE_TYPE;
+  public static <T> TypeReference<T> ofClass(final Class<T> type) {
+    return new TypeReference<>(type);
+  }
+
+  public static <T> TypeReference<T> ofTypeToken(final TypeToken<T> typeToken) {
+    return new TypeReference<>(typeToken.getType());
+  }
+
+  public static <T> TypeReference<T> ofType(final Type type) {
+    return new TypeReference<>(type);
   }
 }

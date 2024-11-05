@@ -41,6 +41,7 @@ import com.ctrip.framework.apollo.core.dto.ServiceDTO;
 import com.ctrip.framework.apollo.core.http.HttpTransport;
 import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
 import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
+import com.ctrip.framework.apollo.core.http.TypeReference;
 import com.ctrip.framework.apollo.core.signature.Signature;
 import com.ctrip.framework.apollo.spi.ConfigClientHolder;
 import com.ctrip.framework.apollo.spi.MockConfigClientHolder;
@@ -78,7 +79,7 @@ public class RemoteConfigLongPollServiceTest {
   private HttpTransport httpTransport;
   @Mock
   private ConfigServiceLocator configServiceLocator;
-  private Type responseType;
+  private TypeReference<List<ApolloConfigNotification>> responseType;
 
   private static String someServerUrl;
   private static String someAppId;

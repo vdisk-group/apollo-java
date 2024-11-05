@@ -42,6 +42,8 @@ import com.ctrip.framework.apollo.core.http.HttpTransportException;
 import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
 import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
 import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
+import com.ctrip.framework.apollo.core.http.TypeReference;
+import com.ctrip.framework.apollo.core.http.TypeReferences;
 import com.ctrip.framework.apollo.core.signature.Signature;
 import com.ctrip.framework.apollo.core.utils.StringUtils;
 import com.google.common.base.Supplier;
@@ -61,8 +63,12 @@ public class HttpConfigClient implements ConfigClient {
 
   private static final Gson GSON = new Gson();
 
-  static final Type WATCH_NOTIFICATIONS_RESPONSE_TYPE = new TypeToken<List<ApolloConfigNotification>>() {
-  }.getType();
+  static final TypeReference<ApolloConfig> GET_CONFIG_RESPONSE_TYPE = TypeReferences.ofClass(
+      ApolloConfig.class);
+
+  static final TypeReference<List<ApolloConfigNotification>> WATCH_NOTIFICATIONS_RESPONSE_TYPE = TypeReferences.ofTypeToken(
+      new TypeToken<List<ApolloConfigNotification>>() {
+      });
 
   private final HttpTransport httpTransport;
 
@@ -290,7 +296,7 @@ public class HttpConfigClient implements ConfigClient {
 
     HttpTransportResponse<ApolloConfig> httpTransportResponse = this.doGetInternal(
         "Get config",
-        () -> this.httpTransport.doGet(httpTransportRequest, ApolloConfig.class));
+        () -> this.httpTransport.doGet(httpTransportRequest, GET_CONFIG_RESPONSE_TYPE));
 
     ApolloConfig apolloConfig = httpTransportResponse.getBody();
     if (httpTransportResponse.getStatusCode() == 304) {

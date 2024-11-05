@@ -21,6 +21,7 @@ import com.ctrip.framework.apollo.core.http.HttpTransportException;
 import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
 import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
 import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
+import com.ctrip.framework.apollo.core.http.TypeReferences;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
 import com.google.common.base.Supplier;
@@ -48,7 +49,7 @@ public class HttpTransportWrapper {
    */
   public <T> HttpResponse<T> doGet(HttpRequest httpRequest, final Class<T> responseType) {
     HttpTransportRequest transportRequest = this.toTransportRequest(httpRequest);
-    return this.doGetInternal(() -> this.transport.doGet(transportRequest, responseType));
+    return this.doGetInternal(() -> this.transport.doGet(transportRequest, TypeReferences.ofClass(responseType)));
   }
 
   private HttpTransportRequest toTransportRequest(HttpRequest httpRequest) {
@@ -86,6 +87,6 @@ public class HttpTransportWrapper {
    */
   public <T> HttpResponse<T> doGet(HttpRequest httpRequest, final Type responseType) {
     HttpTransportRequest transportRequest = this.toTransportRequest(httpRequest);
-    return this.doGetInternal(() -> this.transport.doGet(transportRequest, responseType));
+    return this.doGetInternal(() -> this.transport.doGet(transportRequest, TypeReferences.ofType(responseType)));
   }
 }

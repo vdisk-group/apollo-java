@@ -49,24 +49,12 @@ public class DefaultHttpTransport implements HttpTransport {
 
   @Override
   public <T> HttpTransportResponse<T> doGet(HttpTransportRequest httpTransportRequest,
-      Class<T> responseType)
+      TypeReference<T> responseType)
       throws HttpTransportException, HttpTransportStatusCodeException {
     Objects.requireNonNull(httpTransportRequest, "httpTransportRequest");
     Objects.requireNonNull(responseType, "responseType");
 
-    Function<String, T> convertResponse = input -> GSON.fromJson(input, responseType);
-
-    return this.doGetWithSerializeFunction(httpTransportRequest, convertResponse);
-  }
-
-  @Override
-  public <T> HttpTransportResponse<T> doGet(HttpTransportRequest httpTransportRequest,
-      Type responseType)
-      throws HttpTransportException, HttpTransportStatusCodeException {
-    Objects.requireNonNull(httpTransportRequest, "httpTransportRequest");
-    Objects.requireNonNull(responseType, "responseType");
-
-    Function<String, T> convertResponse = input -> GSON.fromJson(input, responseType);
+    Function<String, T> convertResponse = input -> GSON.fromJson(input, responseType.getType());
 
     return this.doGetWithSerializeFunction(httpTransportRequest, convertResponse);
   }

@@ -21,6 +21,7 @@ import com.ctrip.framework.apollo.core.http.HttpTransportException;
 import com.ctrip.framework.apollo.core.http.HttpTransportRequest;
 import com.ctrip.framework.apollo.core.http.HttpTransportResponse;
 import com.ctrip.framework.apollo.core.http.HttpTransportStatusCodeException;
+import com.ctrip.framework.apollo.core.http.TypeReference;
 import com.google.common.base.Function;
 import com.google.gson.Gson;
 import java.lang.reflect.Type;
@@ -49,24 +50,13 @@ public class ApolloWebClientHttpTransport implements HttpTransport {
 
   @Override
   public <T> HttpTransportResponse<T> doGet(HttpTransportRequest httpTransportRequest,
-      Class<T> responseType)
+      TypeReference<T> responseType)
       throws HttpTransportException, HttpTransportStatusCodeException {
     Objects.requireNonNull(httpTransportRequest, "httpTransportRequest");
     Objects.requireNonNull(responseType, "responseType");
 
-    Function<String, T> convertResponse = input -> this.gson.fromJson(input, responseType);
-
-    return this.doGetWithSerializeFunction(httpTransportRequest, convertResponse);
-  }
-
-  @Override
-  public <T> HttpTransportResponse<T> doGet(HttpTransportRequest httpTransportRequest,
-      Type responseType)
-      throws HttpTransportException, HttpTransportStatusCodeException {
-    Objects.requireNonNull(httpTransportRequest, "httpTransportRequest");
-    Objects.requireNonNull(responseType, "responseType");
-
-    Function<String, T> convertResponse = input -> this.gson.fromJson(input, responseType);
+    Function<String, T> convertResponse = input -> this.gson.fromJson(input,
+        responseType.getType());
 
     return this.doGetWithSerializeFunction(httpTransportRequest, convertResponse);
   }

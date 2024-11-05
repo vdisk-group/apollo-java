@@ -16,8 +16,6 @@
  */
 package com.ctrip.framework.apollo.core.http;
 
-import java.lang.reflect.Type;
-
 public interface HttpTransport {
 
   /**
@@ -29,19 +27,7 @@ public interface HttpTransport {
    * @throws HttpTransportException if any error happened or response code is neither 200 nor 304
    */
   <T> HttpTransportResponse<T> doGet(HttpTransportRequest httpTransportRequest,
-      final Class<T> responseType)
-      throws HttpTransportException, HttpTransportStatusCodeException;
-
-  /**
-   * Do get operation for the http request.
-   *
-   * @param httpTransportRequest the request
-   * @param responseType   the response type
-   * @return the response
-   * @throws HttpTransportException if any error happened or response code is neither 200 nor 304
-   */
-  <T> HttpTransportResponse<T> doGet(HttpTransportRequest httpTransportRequest,
-      final Type responseType)
+      final TypeReference<T> responseType)
       throws HttpTransportException, HttpTransportStatusCodeException;
 
   /**
