@@ -47,8 +47,6 @@ import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsStatus;
 import com.ctrip.framework.apollo.client.v1.grpc.GrpcChannelManager;
 import com.ctrip.framework.apollo.client.v1.grpc.util.InternalCollectionUtil;
 import com.ctrip.framework.apollo.client.v1.grpc.util.InternalStringUtil;
-import com.ctrip.framework.apollo.client.v1.grpc.util.ScopedContext;
-import com.ctrip.framework.apollo.client.v1.grpc.util.ScopedContexts;
 import io.grpc.Context;
 import io.grpc.Context.CancellableContext;
 import io.grpc.ManagedChannel;
@@ -92,17 +90,14 @@ public class GrpcConfigClient implements ConfigClient {
       throws ConfigException {
     Endpoint endpoint = request.getEndpoint();
 
-    try (ScopedContext scopedContext = ScopedContexts.newContext()) {
+    ManagedChannel channel = this.channelManager.getChannel(endpoint);
+    NotificationServiceBlockingStub blockingStub = NotificationServiceGrpc.newBlockingStub(
+        channel);
+    GrpcWatchNotificationRequest grpcRequest = this.toWatchGrpcRequest(request);
 
-      ManagedChannel channel = this.channelManager.getChannel(endpoint, scopedContext);
-      NotificationServiceBlockingStub blockingStub = NotificationServiceGrpc.newBlockingStub(
-          channel);
-      GrpcWatchNotificationRequest grpcRequest = this.toWatchGrpcRequest(request);
-
-      GrpcWatchNotificationResponse grpcResponse = this.doCallInternal("Watch notifications",
-          () -> blockingStub.watch(grpcRequest));
-      return this.toWatchResponse(grpcResponse);
-    }
+    GrpcWatchNotificationResponse grpcResponse = this.doCallInternal("Watch notifications",
+        () -> blockingStub.watch(grpcRequest));
+    return this.toWatchResponse(grpcResponse);
 
   }
 
@@ -242,29 +237,27 @@ public class GrpcConfigClient implements ConfigClient {
       throws ConfigException, ConfigNotFoundException {
     Endpoint endpoint = request.getEndpoint();
 
-    try (ScopedContext scopedContext = ScopedContexts.newContext()) {
+    ManagedChannel channel = this.channelManager.getChannel(endpoint);
+    ConfigServiceBlockingStub blockingStub = ConfigServiceGrpc.newBlockingStub(
+        channel);
+    GrpcGetConfigRequest grpcRequest = this.toGetConfigGrpcRequest(request);
 
-      ManagedChannel channel = this.channelManager.getChannel(endpoint, scopedContext);
-      ConfigServiceBlockingStub blockingStub = ConfigServiceGrpc.newBlockingStub(
-          channel);
-      GrpcGetConfigRequest grpcRequest = this.toGetConfigGrpcRequest(request);
+    GrpcGetConfigResponse grpcResponse = this.doCallInternal(
+        "Get config",
+        () -> blockingStub.getConfig(grpcRequest));
 
-      GrpcGetConfigResponse grpcResponse = this.doCallInternal(
-          "Get config",
-          () -> blockingStub.getConfig(grpcRequest));
-
-      if (!grpcResponse.hasConfig()) {
-        return GetConfigResponse.builder()
-            .status(GetConfigStatus.NOT_MODIFIED)
-            .build();
-      }
-      GrpcApolloConfig grpcApolloConfig = grpcResponse.getConfig();
-      GetConfigResult configResult = this.toGetConfigResult(grpcApolloConfig);
+    if (!grpcResponse.hasConfig()) {
       return GetConfigResponse.builder()
-          .status(GetConfigStatus.OK)
-          .config(configResult)
+          .status(GetConfigStatus.NOT_MODIFIED)
           .build();
     }
+    GrpcApolloConfig grpcApolloConfig = grpcResponse.getConfig();
+    GetConfigResult configResult = this.toGetConfigResult(grpcApolloConfig);
+    return GetConfigResponse.builder()
+        .status(GetConfigStatus.OK)
+        .config(configResult)
+        .build();
+
   }
 
   private GrpcGetConfigRequest toGetConfigGrpcRequest(GetConfigRequest request) {
