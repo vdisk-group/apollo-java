@@ -25,7 +25,7 @@ public class HttpMetaClientFactory {
     throw new UnsupportedOperationException();
   }
 
-  public static MetaClient createClient(HttpTransport httpTransport,
+  public static HttpMetaClient createClient(HttpTransport httpTransport,
       HttpMetaClientProperties properties) {
 
     return new HttpMetaClient(httpTransport, properties);

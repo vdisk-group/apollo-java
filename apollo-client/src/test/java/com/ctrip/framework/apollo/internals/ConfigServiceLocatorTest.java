@@ -22,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.build.MockInjector;
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryOptions;
 import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryRequest;
 import com.ctrip.framework.apollo.client.v1.api.meta.MetaClient;
@@ -150,9 +149,7 @@ public class ConfigServiceLocatorTest {
 
     String queryServiceUrlOld = configServiceLocator.assembleMetaServiceUrl();
 
-    Endpoint endpoint = Endpoint.builder()
-        .address(MockConfigUtil.someMetaServerDomainName)
-        .build();
+    String endpoint = MockConfigUtil.someMetaServerDomainName;
     DiscoveryOptions options = configServiceLocator.assembleMetaServiceOptions();
     DiscoveryRequest request = DiscoveryRequest.builder()
         .endpoint(endpoint)

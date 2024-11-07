@@ -20,7 +20,6 @@ import static com.ctrip.framework.apollo.monitor.internal.ApolloClientMonitorCon
 
 import com.ctrip.framework.apollo.Apollo;
 import com.ctrip.framework.apollo.build.ApolloInjector;
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigNotFoundException;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigOptions;
@@ -230,9 +229,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
         }
         ConfigClient configClient = m_configClientHolder.getConfigClient();
 
-        Endpoint endpoint = Endpoint.builder()
-            .address(configService.getHomepageUrl())
-            .build();
+        String endpoint = configService.getHomepageUrl();
         GetConfigOptions configOptions = assembleQueryConfigOptions(appId, cluster, m_namespace,
             dataCenter, m_remoteMessages.get(), m_configCache.get());
         GetConfigRequest configRequest = GetConfigRequest.builder()

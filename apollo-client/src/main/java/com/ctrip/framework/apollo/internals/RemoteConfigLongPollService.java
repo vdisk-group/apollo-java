@@ -18,7 +18,6 @@ package com.ctrip.framework.apollo.internals;
 
 import static com.ctrip.framework.apollo.monitor.internal.ApolloClientMonitorConstant.*;
 import com.ctrip.framework.apollo.build.ApolloInjector;
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationDefinition;
 import com.ctrip.framework.apollo.client.v1.api.config.NotificationMessages;
@@ -180,9 +179,7 @@ public class RemoteConfigLongPollService {
         }
         ConfigClient configClient = m_configClientHolder.getConfigClient();
 
-        Endpoint endpoint = Endpoint.builder()
-            .address(lastServiceDto.getHomepageUrl())
-            .build();
+        String endpoint = lastServiceDto.getHomepageUrl();
         WatchNotificationsOptions watchOptions = assembleLongPollRefreshOptions(appId, cluster,
             dataCenter,
             m_notifications, secret);

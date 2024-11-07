@@ -16,7 +16,6 @@
  */
 package com.ctrip.framework.apollo.client.v1.http.util;
 
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import com.google.common.escape.Escaper;

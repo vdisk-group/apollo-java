@@ -30,7 +30,6 @@ import static org.mockito.Mockito.when;
 
 import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.build.MockInjector;
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsRequest;
@@ -517,9 +516,7 @@ public class RemoteConfigLongPollServiceTest {
     String longPollRefreshUrlOld =
         remoteConfigLongPollService
             .assembleLongPollRefreshUrl(someUri, someAppId, someCluster, null, notificationsMap);
-    Endpoint endpoint = Endpoint.builder()
-        .address(someUri)
-        .build();
+    String endpoint = someUri;
     WatchNotificationsOptions watchOptions = remoteConfigLongPollService.assembleLongPollRefreshOptions(
         someAppId, someCluster, null, notificationsMap, null);
     WatchNotificationsRequest watchRequest = WatchNotificationsRequest.builder()
@@ -556,9 +553,7 @@ public class RemoteConfigLongPollServiceTest {
     String longPollRefreshUrlOld =
         remoteConfigLongPollService
             .assembleLongPollRefreshUrl(someUri, someAppId, someCluster, null, notificationsMap);
-    Endpoint endpoint = Endpoint.builder()
-        .address(someUri)
-        .build();
+    String endpoint = someUri;
     WatchNotificationsOptions watchOptions = remoteConfigLongPollService.assembleLongPollRefreshOptions(
         someAppId, someCluster, null, notificationsMap, null);
     WatchNotificationsRequest watchRequest = WatchNotificationsRequest.builder()

@@ -14,20 +14,32 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.v1.http.config;
+package com.ctrip.framework.apollo.spi;
 
+import com.ctrip.framework.apollo.client.v1.api.ApiClient;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
-import com.ctrip.framework.apollo.core.http.HttpTransport;
+import com.ctrip.framework.apollo.core.spi.Ordered;
 
-public class HttpConfigClientFactory {
+public interface ApiClientProvider extends Ordered {
 
-  private HttpConfigClientFactory() {
-    throw new UnsupportedOperationException();
-  }
+  /**
+   * get the type of client created by the Provider
+   *
+   * @return the type of client
+   */
+  String getClientType();
 
-  public static HttpConfigClient createClient(HttpTransport httpTransport,
-      HttpConfigClientProperties properties) {
+  /**
+   * get the name of Provider
+   *
+   * @return name of Provider
+   */
+  String getName();
 
-    return new HttpConfigClient(httpTransport, properties);
-  }
+  /**
+   * get an instance of ApiClient
+   *
+   * @return ApiClient
+   */
+  ApiClient createClient();
 }

@@ -16,7 +16,6 @@
  */
 package com.ctrip.framework.apollo.client.v1.http.config;
 
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigException;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigNotFoundException;
@@ -50,7 +49,6 @@ import com.google.common.base.Supplier;
 import com.google.common.collect.Maps;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
-import java.lang.reflect.Type;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;

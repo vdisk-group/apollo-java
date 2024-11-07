@@ -32,7 +32,6 @@ import static org.mockito.Mockito.when;
 
 import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.build.MockInjector;
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigRequest;
@@ -364,9 +363,7 @@ public class RemoteConfigRepositoryTest {
         .assembleQueryConfigUrl(someUri, someAppId, someCluster, someNamespace, null,
             notificationMessages,
             someApolloConfig);
-    Endpoint endpoint = Endpoint.builder()
-        .address(someUri)
-        .build();
+    String endpoint = someUri;
     GetConfigOptions configOptions = remoteConfigRepository.assembleQueryConfigOptions(someAppId,
         someCluster, someNamespace, null,
         notificationMessages,

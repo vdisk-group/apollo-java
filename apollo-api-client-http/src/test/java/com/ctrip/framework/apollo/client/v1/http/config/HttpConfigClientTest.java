@@ -16,7 +16,6 @@
  */
 package com.ctrip.framework.apollo.client.v1.http.config;
 
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigOptions;
 import com.ctrip.framework.apollo.client.v1.api.config.GetConfigRequest;
@@ -79,9 +78,7 @@ class HttpConfigClientTest {
   void watch_ok() {
     ConfigClient client = this.createClient();
 
-    Endpoint endpoint = Endpoint.builder()
-        .address("http://localhost:" + this.port)
-        .build();
+    String endpoint = "http://localhost:" + this.port;
 
     WatchNotificationsOptions options = this.createWatchRequest();
     WatchNotificationsRequest request = WatchNotificationsRequest.builder()
@@ -186,9 +183,7 @@ class HttpConfigClientTest {
   void watch_not_modified() {
     ConfigClient client = this.createClient();
 
-    Endpoint endpoint = Endpoint.builder()
-        .address("http://localhost:" + this.port)
-        .build();
+    String endpoint = "http://localhost:" + this.port;
 
     WatchNotificationsOptions options = this.createWatchRequest();
     WatchNotificationsRequest request = WatchNotificationsRequest.builder()
@@ -224,9 +219,7 @@ class HttpConfigClientTest {
   void get_ok() {
     ConfigClient client = this.createClient();
 
-    Endpoint endpoint = Endpoint.builder()
-        .address("http://localhost:" + this.port)
-        .build();
+    String endpoint = "http://localhost:" + this.port;
 
     Map<String, Long> details = new LinkedHashMap<>();
     details.put("someNamespace", 1L);
@@ -323,9 +316,7 @@ class HttpConfigClientTest {
   void get_not_modified() {
     ConfigClient client = this.createClient();
 
-    Endpoint endpoint = Endpoint.builder()
-        .address("http://localhost:" + this.port)
-        .build();
+    String endpoint = "http://localhost:" + this.port;
 
     Map<String, Long> details = new LinkedHashMap<>();
     details.put("someNamespace", 1L);

@@ -17,7 +17,6 @@
 package com.ctrip.framework.apollo.client.v1.api.meta;
 
 
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import java.util.Objects;
 
 public class DiscoveryRequest {

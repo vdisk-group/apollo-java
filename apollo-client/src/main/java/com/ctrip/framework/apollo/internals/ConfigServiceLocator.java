@@ -19,7 +19,6 @@ package com.ctrip.framework.apollo.internals;
 import static com.ctrip.framework.apollo.monitor.internal.ApolloClientMonitorConstant.*;
 
 import com.ctrip.framework.apollo.build.ApolloInjector;
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.meta.ConfigServiceInstance;
 import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryOptions;
 import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryRequest;
