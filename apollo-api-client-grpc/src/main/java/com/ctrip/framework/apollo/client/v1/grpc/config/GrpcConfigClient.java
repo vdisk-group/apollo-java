@@ -21,14 +21,16 @@ import com.ctrip.framework.apollo.api.v1.grpc.config.ConfigServiceGrpc.ConfigSer
 import com.ctrip.framework.apollo.api.v1.grpc.config.GrpcApolloConfig;
 import com.ctrip.framework.apollo.api.v1.grpc.config.GrpcGetConfigRequest;
 import com.ctrip.framework.apollo.api.v1.grpc.config.GrpcGetConfigResponse;
+import com.ctrip.framework.apollo.api.v1.grpc.config.GrpcGetConfigResponseData;
 import com.ctrip.framework.apollo.api.v1.grpc.config.GrpcNotificationDefinition;
 import com.ctrip.framework.apollo.api.v1.grpc.config.GrpcNotificationMessages;
 import com.ctrip.framework.apollo.api.v1.grpc.config.GrpcNotificationResult;
 import com.ctrip.framework.apollo.api.v1.grpc.config.GrpcWatchNotificationRequest;
+import com.ctrip.framework.apollo.api.v1.grpc.config.GrpcWatchNotificationRequest.Builder;
 import com.ctrip.framework.apollo.api.v1.grpc.config.GrpcWatchNotificationResponse;
+import com.ctrip.framework.apollo.api.v1.grpc.config.GrpcWatchNotificationResponseData;
 import com.ctrip.framework.apollo.api.v1.grpc.config.NotificationServiceGrpc;
 import com.ctrip.framework.apollo.api.v1.grpc.config.NotificationServiceGrpc.NotificationServiceBlockingStub;
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigException;
 import com.ctrip.framework.apollo.client.v1.api.config.ConfigNotFoundException;
@@ -44,9 +46,10 @@ import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsOptions
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsRequest;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsResponse;
 import com.ctrip.framework.apollo.client.v1.api.config.WatchNotificationsStatus;
-import com.ctrip.framework.apollo.client.v1.grpc.GrpcChannelManager;
 import com.ctrip.framework.apollo.client.v1.grpc.util.InternalCollectionUtil;
 import com.ctrip.framework.apollo.client.v1.grpc.util.InternalStringUtil;
+import com.ctrip.framework.apollo.grpc.channel.v1.api.GrpcChannelManager;
+import com.sun.javaws.exceptions.InvalidArgumentException;
 import io.grpc.Context;
 import io.grpc.Context.CancellableContext;
 import io.grpc.ManagedChannel;
@@ -88,7 +91,7 @@ public class GrpcConfigClient implements ConfigClient {
   @Override
   public WatchNotificationsResponse watch(WatchNotificationsRequest request)
       throws ConfigException {
-    Endpoint endpoint = request.getEndpoint();
+    String endpoint = request.getEndpoint();
 
     ManagedChannel channel = this.channelManager.getChannel(endpoint);
     NotificationServiceBlockingStub blockingStub = NotificationServiceGrpc.newBlockingStub(
@@ -96,16 +99,24 @@ public class GrpcConfigClient implements ConfigClient {
     GrpcWatchNotificationRequest grpcRequest = this.toWatchGrpcRequest(request);
 
     GrpcWatchNotificationResponse grpcResponse = this.doCallInternal("Watch notifications",
-        () -> blockingStub.watch(grpcRequest));
+        () -> {
+          Iterator<GrpcWatchNotificationResponse> responseIterator = blockingStub.watch(
+              grpcRequest);
+          if (responseIterator.hasNext()) {
+            return responseIterator.next();
+          } else {
+            throw new ConfigException("Watch notifications failed. No response");
+          }
+        });
     return this.toWatchResponse(grpcResponse);
 
   }
 
   private GrpcWatchNotificationRequest toWatchGrpcRequest(WatchNotificationsRequest request) {
-    Endpoint endpoint = request.getEndpoint();
+    String endpoint = request.getEndpoint();
     WatchNotificationsOptions options = request.getOptions();
 
-    GrpcWatchNotificationRequest.Builder builder = GrpcWatchNotificationRequest.newBuilder();
+    Builder builder = GrpcWatchNotificationRequest.newBuilder();
 
     builder.setAppId(options.getAppId());
     builder.setCluster(options.getCluster());
@@ -150,39 +161,75 @@ public class GrpcConfigClient implements ConfigClient {
     return grpcNotifications;
   }
 
-  private <T> T doCallInternal(String scene, Callable<Iterator<T>> action)
+  private <T> T doCallInternal(String scene, Callable<T> action)
       throws ConfigNotFoundException {
     try (CancellableContext cancellableContext = Context.current().withCancellation()) {
-      Iterator<T> responseIterator = cancellableContext.call(action);
-      if (responseIterator.hasNext()) {
-        return responseIterator.next();
-      }
+      return cancellableContext.call(action);
+    } catch (ConfigException e) {
+      throw e;
     } catch (StatusRuntimeException e) {
-      if (Objects.equals(Status.NOT_FOUND.getCode(), e.getStatus().getCode())) {
-        throw new ConfigNotFoundException();
-      } else {
-        throw new ConfigException(
-            MessageFormat.format("{0} failed. Grpc Error: {1}",
-                scene, e.getLocalizedMessage()), e);
-      }
+      throw new ConfigException(
+          MessageFormat.format("{0} failed. Grpc Error: {1}",
+              scene, e.getLocalizedMessage()), e);
     } catch (Throwable e) {
       throw new ConfigException(
           MessageFormat.format("{0} failed. Error: {1}",
               scene, e.getLocalizedMessage()), e);
     }
-    throw new ConfigException(
-        MessageFormat.format("{0} failed. No response", scene));
   }
 
   private WatchNotificationsResponse toWatchResponse(
       GrpcWatchNotificationResponse grpcResponse) {
-    List<GrpcNotificationResult> grpcNotifications = grpcResponse.getNotificationsList();
-    if (InternalCollectionUtil.isEmpty(grpcNotifications)) {
-      return WatchNotificationsResponse.builder()
-          .status(WatchNotificationsStatus.NOT_MODIFIED)
-          .notifications(Collections.emptyList())
-          .build();
+    int statusValue = grpcResponse.getStatusValue();
+    GrpcWatchNotificationResponse.Status status = grpcResponse.getStatus();
+    String errorMessage = grpcResponse.getErrorMessage();
+    switch (status) {
+      case UNKNOWN: {
+        throw new ConfigException(
+            MessageFormat.format("Watch notifications failed. status: UNKNOWN {0}", errorMessage));
+      }
+      case NOT_MODIFIED: {
+        return WatchNotificationsResponse.builder()
+            .status(WatchNotificationsStatus.NOT_MODIFIED)
+            .notifications(Collections.emptyList())
+            .build();
+      }
+      case OK: {
+        return this.toOkWatchResponse(grpcResponse);
+      }
+      case NOT_FOUND: {
+        throw new ConfigNotFoundException();
+      }
+      case INVALID_ARGUMENT: {
+        throw new ConfigException(
+            MessageFormat.format("Watch notifications failed. status: INVALID_ARGUMENT {0}",
+                errorMessage));
+      }
+      case INTERNAL_SERVER_ERROR: {
+        throw new ConfigException(
+            MessageFormat.format("Watch notifications failed. status: INTERNAL_SERVER_ERROR {0}",
+                errorMessage));
+      }
+      case UNRECOGNIZED: {
+        throw new ConfigException(
+            MessageFormat.format("Watch notifications failed. status: UNRECOGNIZED ({0}) {1}",
+                statusValue, errorMessage));
+      }
+      default: {
+        throw new ConfigException(
+            MessageFormat.format("Watch notifications failed. Unexpected status: {0} {1}", status,
+                errorMessage));
+      }
     }
+  }
+
+  private WatchNotificationsResponse toOkWatchResponse(
+      GrpcWatchNotificationResponse grpcResponse) {
+    if (!grpcResponse.hasData()) {
+      throw new ConfigException("Watch notifications failed. No data");
+    }
+    GrpcWatchNotificationResponseData data = grpcResponse.getData();
+    List<GrpcNotificationResult> grpcNotifications = data.getNotificationsList();
     List<NotificationResult> notifications = this.toNotificationResults(
         grpcNotifications);
     return WatchNotificationsResponse.builder()
@@ -235,7 +282,7 @@ public class GrpcConfigClient implements ConfigClient {
   @Override
   public GetConfigResponse getConfig(GetConfigRequest request)
       throws ConfigException, ConfigNotFoundException {
-    Endpoint endpoint = request.getEndpoint();
+    String endpoint = request.getEndpoint();
 
     ManagedChannel channel = this.channelManager.getChannel(endpoint);
     ConfigServiceBlockingStub blockingStub = ConfigServiceGrpc.newBlockingStub(
@@ -246,22 +293,11 @@ public class GrpcConfigClient implements ConfigClient {
         "Get config",
         () -> blockingStub.getConfig(grpcRequest));
 
-    if (!grpcResponse.hasConfig()) {
-      return GetConfigResponse.builder()
-          .status(GetConfigStatus.NOT_MODIFIED)
-          .build();
-    }
-    GrpcApolloConfig grpcApolloConfig = grpcResponse.getConfig();
-    GetConfigResult configResult = this.toGetConfigResult(grpcApolloConfig);
-    return GetConfigResponse.builder()
-        .status(GetConfigStatus.OK)
-        .config(configResult)
-        .build();
-
+    return this.toGetConfigResponse(grpcResponse);
   }
 
   private GrpcGetConfigRequest toGetConfigGrpcRequest(GetConfigRequest request) {
-    Endpoint endpoint = request.getEndpoint();
+    String endpoint = request.getEndpoint();
     GetConfigOptions options = request.getOptions();
 
     GrpcGetConfigRequest.Builder builder = GrpcGetConfigRequest.newBuilder();
@@ -304,6 +340,64 @@ public class GrpcConfigClient implements ConfigClient {
     }
     return GrpcNotificationMessages.newBuilder()
         .putAllDetails(messages.getDetails())
+        .build();
+  }
+
+  private GetConfigResponse toGetConfigResponse(GrpcGetConfigResponse grpcResponse) {
+    int statusValue = grpcResponse.getStatusValue();
+    GrpcGetConfigResponse.Status status = grpcResponse.getStatus();
+    String errorMessage = grpcResponse.getErrorMessage();
+    switch (status) {
+      case UNKNOWN: {
+        throw new ConfigException(MessageFormat.format("Get config failed. status: UNKNOWN {0}",
+            errorMessage));
+      }
+      case NOT_MODIFIED: {
+        return GetConfigResponse.builder()
+            .status(GetConfigStatus.NOT_MODIFIED)
+            .build();
+      }
+      case OK: {
+        return this.toOkGetConfigResponse(grpcResponse);
+      }
+      case NOT_FOUND: {
+        throw new ConfigNotFoundException();
+      }
+      case INVALID_ARGUMENT: {
+        throw new ConfigException(
+            MessageFormat.format("Get config failed. status: INVALID_ARGUMENT {0}",
+                errorMessage));
+      }
+      case INTERNAL_SERVER_ERROR: {
+        throw new ConfigException(
+            MessageFormat.format("Get config failed. status: INTERNAL_SERVER_ERROR {0}",
+                errorMessage));
+      }
+      case UNRECOGNIZED: {
+        throw new ConfigException(
+            MessageFormat.format("Get config failed. status: UNRECOGNIZED ({0}) {1}", statusValue,
+                errorMessage));
+      }
+      default:
+        throw new ConfigException(
+            MessageFormat.format("Get config failed. Unexpected status: {0} {1}",
+                status, errorMessage));
+    }
+  }
+
+  private GetConfigResponse toOkGetConfigResponse(GrpcGetConfigResponse grpcResponse) {
+    if (!grpcResponse.hasData()) {
+      throw new ConfigException("Get config failed. No data");
+    }
+    GrpcGetConfigResponseData data = grpcResponse.getData();
+    if (!data.hasConfig()) {
+      throw new ConfigException("Get config failed. No config");
+    }
+    GrpcApolloConfig grpcApolloConfig = data.getConfig();
+    GetConfigResult configResult = this.toGetConfigResult(grpcApolloConfig);
+    return GetConfigResponse.builder()
+        .status(GetConfigStatus.OK)
+        .config(configResult)
         .build();
   }
 

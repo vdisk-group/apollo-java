@@ -83,9 +83,13 @@
   </properties>
 
   <modules>
+    <module>apollo-test</module>
     <module>apollo-api-client</module>
     <module>apollo-api-client-http</module>
     <module>apollo-grpc-proto</module>
+    <module>apollo-grpc-channel-api</module>
+    <module>apollo-grpc-channel-netty</module>
+    <module>apollo-grpc-channel-netty-shaded</module>
     <module>apollo-api-client-grpc</module>
     <module>apollo-core</module>
     <module>apollo-client</module>
@@ -99,6 +103,11 @@
     <dependencies>
       <dependency>
         <groupId>com.ctrip.framework.apollo</groupId>
+        <artifactId>apollo-test</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.ctrip.framework.apollo</groupId>
         <artifactId>apollo-api-client</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -110,6 +119,21 @@
       <dependency>
         <groupId>com.ctrip.framework.apollo</groupId>
         <artifactId>apollo-grpc-proto</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.ctrip.framework.apollo</groupId>
+        <artifactId>apollo-grpc-channel-api</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.ctrip.framework.apollo</groupId>
+        <artifactId>apollo-grpc-channel-netty</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.ctrip.framework.apollo</groupId>
+        <artifactId>apollo-grpc-channel-netty-shaded</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

@@ -18,14 +18,12 @@ package com.ctrip.framework.apollo.client.v1.api.config;
 
 import java.util.Objects;
 
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
-
 public class WatchNotificationsRequest {
 
   /**
    * config server
    */
-  private final Endpoint endpoint;
+  private final String endpoint;
 
   /**
    * interested notifications
@@ -54,7 +52,7 @@ public class WatchNotificationsRequest {
     return builder;
   }
 
-  public Endpoint getEndpoint() {
+  public String getEndpoint() {
     return this.endpoint;
   }
 
@@ -64,13 +62,13 @@ public class WatchNotificationsRequest {
 
   public static final class Builder {
 
-    private Endpoint endpoint;
+    private String endpoint;
     private WatchNotificationsOptions options;
 
     Builder() {
     }
 
-    public Builder endpoint(Endpoint endpoint) {
+    public Builder endpoint(String endpoint) {
       this.endpoint = endpoint;
       return this;
     }

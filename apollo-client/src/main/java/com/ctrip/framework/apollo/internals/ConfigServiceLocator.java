@@ -239,12 +239,9 @@ public class ConfigServiceLocator {
     }
 
     String domainName = m_configUtil.getMetaServerDomainName();
-    Endpoint endpoint = Endpoint.builder()
-        .address(domainName)
-        .build();
     DiscoveryOptions discoveryOptions = assembleMetaServiceOptions();
     DiscoveryRequest discoveryRequest = DiscoveryRequest.builder()
-        .endpoint(endpoint)
+        .endpoint(domainName)
         .options(discoveryOptions)
         .build();
 

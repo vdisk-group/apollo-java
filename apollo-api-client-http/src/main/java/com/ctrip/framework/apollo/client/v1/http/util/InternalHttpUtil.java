@@ -31,12 +31,11 @@ public class InternalHttpUtil {
 
   private static final Escaper QUERY_PARAM_ESCAPER = UrlEscapers.urlFormParameterEscaper();
 
-  public static String getActualAddress(Endpoint endpoint) {
-    String address = endpoint.getAddress();
-    if (address.endsWith("/")) {
-      return address.substring(0, address.length() - 1);
+  public static String getActualAddress(String endpoint) {
+    if (endpoint.endsWith("/")) {
+      return endpoint.substring(0, endpoint.length() - 1);
     } else {
-      return address;
+      return endpoint;
     }
   }
 

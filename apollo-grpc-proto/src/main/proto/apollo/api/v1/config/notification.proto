@@ -22,6 +22,13 @@ option java_multiple_files = true;
 option java_package = "com.ctrip.framework.apollo.api.v1.grpc.config";
 option java_outer_classname = "NotificationProto";
 
+message GrpcNotificationDefinition {
+
+  string namespaceName = 1;
+
+  int64 notificationId = 2;
+}
+
 message GrpcWatchNotificationRequest {
 
   string appId = 1;
@@ -37,16 +44,9 @@ message GrpcWatchNotificationRequest {
   string label = 6;
 }
 
-message GrpcNotificationDefinition {
+message GrpcNotificationMessages {
 
-  string namespaceName = 1;
-
-  int64 notificationId = 2;
-}
-
-message GrpcWatchNotificationResponse {
-
-  repeated GrpcNotificationResult notifications = 1;
+  map<string, int64> details = 1;
 }
 
 message GrpcNotificationResult {
@@ -58,9 +58,27 @@ message GrpcNotificationResult {
   GrpcNotificationMessages messages = 3;
 }
 
-message GrpcNotificationMessages {
+message GrpcWatchNotificationResponseData {
 
-  map<string, int64> details = 1;
+  repeated GrpcNotificationResult notifications = 1;
+}
+
+message GrpcWatchNotificationResponse {
+
+  Status status = 1;
+
+  string errorMessage = 2;
+
+  optional GrpcWatchNotificationResponseData data = 3;
+
+  enum Status {
+    UNKNOWN = 0;
+    NOT_MODIFIED = 1;
+    OK = 2;
+    NOT_FOUND = 3;
+    INVALID_ARGUMENT = 4;
+    INTERNAL_SERVER_ERROR = 5;
+  }
 }
 
 service NotificationService {

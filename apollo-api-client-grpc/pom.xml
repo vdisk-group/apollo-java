@@ -41,6 +41,10 @@
       <groupId>com.ctrip.framework.apollo</groupId>
       <artifactId>apollo-grpc-proto</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.ctrip.framework.apollo</groupId>
+      <artifactId>apollo-grpc-channel-api</artifactId>
+    </dependency>
     <!-- end of apollo -->
     <!-- json -->
     <dependency>

@@ -16,7 +16,6 @@
  */
 package com.ctrip.framework.apollo.client.v1.api.config;
 
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import java.util.Objects;
 
 public class GetConfigRequest {
@@ -24,7 +23,7 @@ public class GetConfigRequest {
   /**
    * config server
    */
-  private final Endpoint endpoint;
+  private final String endpoint;
 
   /**
    * config queries
@@ -53,7 +52,7 @@ public class GetConfigRequest {
     return builder;
   }
 
-  public Endpoint getEndpoint() {
+  public String getEndpoint() {
     return this.endpoint;
   }
 
@@ -63,13 +62,13 @@ public class GetConfigRequest {
 
   public static final class Builder {
 
-    private Endpoint endpoint;
+    private String endpoint;
     private GetConfigOptions options;
 
     Builder() {
     }
 
-    public Builder endpoint(Endpoint endpoint) {
+    public Builder endpoint(String endpoint) {
       this.endpoint = endpoint;
       return this;
     }

@@ -18,13 +18,14 @@ package com.ctrip.framework.apollo.client.v1.api.meta;
 
 
 import com.ctrip.framework.apollo.client.v1.api.Endpoint;
+import java.util.Objects;
 
 public class DiscoveryRequest {
 
   /**
    * meta server
    */
-  private final Endpoint endpoint;
+  private final String endpoint;
 
   /**
    * discovery options
@@ -38,6 +39,8 @@ public class DiscoveryRequest {
   }
 
   private static void validateBuilder(Builder builder) {
+    Objects.requireNonNull(builder.endpoint, "endpoint");
+    Objects.requireNonNull(builder.options, "options");
   }
 
   public static Builder builder() {
@@ -51,7 +54,7 @@ public class DiscoveryRequest {
     return builder;
   }
 
-  public Endpoint getEndpoint() {
+  public String getEndpoint() {
     return this.endpoint;
   }
 
@@ -61,13 +64,13 @@ public class DiscoveryRequest {
 
   public static final class Builder {
 
-    private Endpoint endpoint;
+    private String endpoint;
     private DiscoveryOptions options;
 
     Builder() {
     }
 
-    public Builder endpoint(Endpoint endpoint) {
+    public Builder endpoint(String endpoint) {
       this.endpoint = endpoint;
       return this;
     }

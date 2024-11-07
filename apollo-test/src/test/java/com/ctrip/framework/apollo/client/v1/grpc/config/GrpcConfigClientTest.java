@@ -14,14 +14,33 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.v1.grpc;
+package com.ctrip.framework.apollo.client.v1.grpc.config;
 
-public interface GrpcChannelManagerFactory {
+import com.ctrip.framework.apollo.client.v1.api.config.ConfigClient;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-  /**
-   * Get a gRPC channel manager
-   *
-   * @return a gRPC channel manager
-   */
-  GrpcChannelManager getChannelManager();
+class GrpcConfigClientTest {
+
+  @BeforeEach
+  void setUp() {
+  }
+
+  @AfterEach
+  void tearDown() {
+  }
+
+  @Test
+  void watch_ok() {
+//    ConfigClient client = this.createClient();
+  }
+
+  private ConfigClient createClient() {
+    return null;
+  }
+
+  @Test
+  void getConfig() {
+  }
 }

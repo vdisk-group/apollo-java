@@ -17,7 +17,7 @@
 package com.ctrip.framework.apollo.client.v1.grpc.meta;
 
 import com.ctrip.framework.apollo.client.v1.api.meta.MetaClient;
-import com.ctrip.framework.apollo.client.v1.grpc.GrpcChannelManager;
+import com.ctrip.framework.apollo.grpc.channel.v1.api.GrpcChannelManager;
 
 public class GrpcMetaClientFactory {
 

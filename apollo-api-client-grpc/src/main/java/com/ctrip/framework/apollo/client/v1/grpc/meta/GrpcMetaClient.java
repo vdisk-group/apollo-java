@@ -17,19 +17,21 @@
 package com.ctrip.framework.apollo.client.v1.grpc.meta;
 
 import com.ctrip.framework.apollo.api.v1.grpc.meta.GrpcDiscoveryRequest;
+import com.ctrip.framework.apollo.api.v1.grpc.meta.GrpcDiscoveryRequest.Builder;
 import com.ctrip.framework.apollo.api.v1.grpc.meta.GrpcDiscoveryResponse;
+import com.ctrip.framework.apollo.api.v1.grpc.meta.GrpcDiscoveryResponse.Status;
+import com.ctrip.framework.apollo.api.v1.grpc.meta.GrpcDiscoveryResponseData;
 import com.ctrip.framework.apollo.api.v1.grpc.meta.GrpcServiceInstance;
 import com.ctrip.framework.apollo.api.v1.grpc.meta.MetaServiceGrpc;
 import com.ctrip.framework.apollo.api.v1.grpc.meta.MetaServiceGrpc.MetaServiceBlockingStub;
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
 import com.ctrip.framework.apollo.client.v1.api.meta.ConfigServiceInstance;
 import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryOptions;
 import com.ctrip.framework.apollo.client.v1.api.meta.DiscoveryRequest;
 import com.ctrip.framework.apollo.client.v1.api.meta.MetaClient;
 import com.ctrip.framework.apollo.client.v1.api.meta.MetaException;
-import com.ctrip.framework.apollo.client.v1.grpc.GrpcChannelManager;
 import com.ctrip.framework.apollo.client.v1.grpc.util.InternalCollectionUtil;
 import com.ctrip.framework.apollo.client.v1.grpc.util.InternalStringUtil;
+import com.ctrip.framework.apollo.grpc.channel.v1.api.GrpcChannelManager;
 import io.grpc.Context;
 import io.grpc.Context.CancellableContext;
 import io.grpc.ManagedChannel;
@@ -66,7 +68,7 @@ public class GrpcMetaClient implements MetaClient {
 
   @Override
   public List<ConfigServiceInstance> getServices(DiscoveryRequest request) {
-    Endpoint endpoint = request.getEndpoint();
+    String endpoint = request.getEndpoint();
 
     ManagedChannel channel = this.channelManager.getChannel(endpoint);
     MetaServiceBlockingStub blockingStub = MetaServiceGrpc.newBlockingStub(channel);
@@ -76,7 +78,61 @@ public class GrpcMetaClient implements MetaClient {
         "Get config services",
         () -> blockingStub.getServices(grpcRequest));
 
-    List<GrpcServiceInstance> instancesList = grpcResponse.getInstancesList();
+    return this.toConfigServiceInstances(grpcResponse);
+
+  }
+
+  private List<ConfigServiceInstance> toConfigServiceInstances(GrpcDiscoveryResponse grpcResponse) {
+    int statusValue = grpcResponse.getStatusValue();
+    Status status = grpcResponse.getStatus();
+    String errorMessage = grpcResponse.getErrorMessage();
+    switch (status) {
+      case UNKNOWN: {
+        throw new MetaException(
+            MessageFormat.format("Get config services failed. status: UNKNOWN {0}", errorMessage));
+      }
+      case NOT_MODIFIED: {
+        throw new MetaException(
+            MessageFormat.format("Get config services failed. status: NOT_MODIFIED {0}",
+                errorMessage));
+      }
+      case OK: {
+        return this.toOkConfigServiceInstances(grpcResponse);
+      }
+      case NOT_FOUND: {
+        throw new MetaException(
+            MessageFormat.format("Get config services failed. status: NOT_FOUND {0}",
+                errorMessage));
+      }
+      case INVALID_ARGUMENT: {
+        throw new MetaException(
+            MessageFormat.format("Get config services failed. status: INVALID_ARGUMENT {0}",
+                errorMessage));
+      }
+      case INTERNAL_SERVER_ERROR: {
+        throw new MetaException(
+            MessageFormat.format("Get config services failed. status: INTERNAL_SERVER_ERROR {0}",
+                errorMessage));
+      }
+      case UNRECOGNIZED: {
+        throw new MetaException(
+            MessageFormat.format("Get config services failed. status: UNRECOGNIZED ({0}) {1}",
+                statusValue, errorMessage));
+      }
+      default: {
+        throw new MetaException(
+            MessageFormat.format("Get config services failed. Unknown status: {0}", status));
+      }
+    }
+  }
+
+  private List<ConfigServiceInstance> toOkConfigServiceInstances(
+      GrpcDiscoveryResponse grpcResponse) {
+    if (!grpcResponse.hasData()) {
+      throw new MetaException("Get config services failed. No data");
+    }
+    GrpcDiscoveryResponseData data = grpcResponse.getData();
+    List<GrpcServiceInstance> instancesList = data.getInstancesList();
     if (InternalCollectionUtil.isEmpty(instancesList)) {
       return Collections.emptyList();
     }
@@ -91,13 +147,12 @@ public class GrpcMetaClient implements MetaClient {
       configServiceInstanceList.add(instance);
     }
     return Collections.unmodifiableList(configServiceInstanceList);
-
   }
 
   private GrpcDiscoveryRequest toGetServicesGrpcRequest(DiscoveryRequest request) {
     DiscoveryOptions options = request.getOptions();
 
-    GrpcDiscoveryRequest.Builder builder = GrpcDiscoveryRequest.newBuilder();
+    Builder builder = GrpcDiscoveryRequest.newBuilder();
 
     String appId = options.getAppId();
     if (!InternalStringUtil.isEmpty(appId)) {
@@ -112,12 +167,11 @@ public class GrpcMetaClient implements MetaClient {
     return builder.build();
   }
 
-  private <T> T doCallInternal(String scene, Callable<Iterator<T>> action) {
+  private <T> T doCallInternal(String scene, Callable<T> action) {
     try (CancellableContext cancellableContext = Context.current().withCancellation()) {
-      Iterator<T> responseIterator = cancellableContext.call(action);
-      if (responseIterator.hasNext()) {
-        return responseIterator.next();
-      }
+      return cancellableContext.call(action);
+    } catch (MetaException e) {
+      throw e;
     } catch (StatusRuntimeException e) {
       throw new MetaException(
           MessageFormat.format("{0} failed. Grpc Error: {1}",
@@ -127,7 +181,5 @@ public class GrpcMetaClient implements MetaClient {
           MessageFormat.format("{0} failed. Error: {1}",
               scene, e.getLocalizedMessage()), e);
     }
-    throw new MetaException(
-        MessageFormat.format("{0} failed. No response", scene));
   }
 }

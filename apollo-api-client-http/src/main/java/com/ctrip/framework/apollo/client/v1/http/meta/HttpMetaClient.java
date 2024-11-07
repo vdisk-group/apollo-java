@@ -67,7 +67,7 @@ public class HttpMetaClient implements MetaClient {
   }
 
   private String toGetServicesUri(DiscoveryRequest request) {
-    Endpoint endpoint = request.getEndpoint();
+    String endpoint = request.getEndpoint();
     DiscoveryOptions options = request.getOptions();
 
     Map<String, String> queryParams = Maps.newHashMap();

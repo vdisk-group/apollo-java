@@ -14,18 +14,19 @@
  * limitations under the License.
  *
  */
-package com.ctrip.framework.apollo.client.v1.grpc;
+package com.ctrip.framework.apollo.client.v1.grpc.channel.netty.shaded;
 
-import com.ctrip.framework.apollo.client.v1.api.Endpoint;
+import com.ctrip.framework.apollo.grpc.channel.v1.api.GrpcChannelFactory;
 import io.grpc.ManagedChannel;
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 
-public interface GrpcChannelManager {
+public class NettyGrpcChannelFactory implements GrpcChannelFactory {
 
-  /**
-   * Get a gRPC channel for the given endpoint
-   *
-   * @param endpoint the endpoint
-   * @return a gRPC channel
-   */
-  ManagedChannel getChannel(Endpoint endpoint);
+  @Override
+  public ManagedChannel createChannel(String endpoint) {
+    ManagedChannel channel = NettyChannelBuilder.forTarget(endpoint)
+        .usePlaintext()
+        .build();
+    return channel;
+  }
 }

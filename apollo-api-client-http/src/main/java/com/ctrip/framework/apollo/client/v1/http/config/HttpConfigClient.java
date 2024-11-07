@@ -87,7 +87,7 @@ public class HttpConfigClient implements ConfigClient {
   }
 
   private String toWatchHttpUri(WatchNotificationsRequest request) {
-    Endpoint endpoint = request.getEndpoint();
+    String endpoint = request.getEndpoint();
     WatchNotificationsOptions options = request.getOptions();
 
     Map<String, String> queryParams = new LinkedHashMap<>();
@@ -248,7 +248,7 @@ public class HttpConfigClient implements ConfigClient {
   }
 
   private String toGetConfigHttpUri(GetConfigRequest request) {
-    Endpoint endpoint = request.getEndpoint();
+    String endpoint = request.getEndpoint();
     GetConfigOptions options = request.getOptions();
 
     Map<String, String> queryParams = new LinkedHashMap<>();
